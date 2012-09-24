@@ -217,7 +217,7 @@ function resize_and_crop( &$image, $args ) {
 
 	// If the original and new images are proportional (no cropping needed), just do a standard resize
 	if ( $ratio_orig == $ratio_end )
-		$image = setwidth( $image, $end_w );
+		setwidth( $image, $end_w );
 
 	// If we need to crop off the sides
 	elseif ( $ratio_orig > $ratio_end ) {
