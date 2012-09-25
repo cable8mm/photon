@@ -467,7 +467,7 @@ function fetch_raw_data( $url, $timeout=5, $connect_timeout=2 ) {
 	curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );
 	curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
 	curl_setopt( $ch, CURLOPT_MAXREDIRS, 1 );
-	curl_setopt( $ch, CURLOPT_USERAGENT, 'Jetpack Image Booster' );
+	curl_setopt( $ch, CURLOPT_USERAGENT, 'Photon/1.0' );
 	return curl_exec( $ch );
 }
 
