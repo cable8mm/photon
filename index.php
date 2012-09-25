@@ -160,7 +160,7 @@ function fit_in_box( &$image, $args ) {
 
 	list( $width, $height ) = array_map( 'abs', array_map( 'intval', explode( ',', $args ) ) );
 	if ( ( $w == $width && $h == $height ) ||
-		! $width || ! $height || $w < $width || $h < $height
+		! $width || ! $height || ( $w < $width && $h < $height )
 	) {
 		gd_to_gmagick( $image );
 		return;
