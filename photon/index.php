@@ -484,6 +484,12 @@ function do_a_filter( $function_name, $arguments ) {
 	}
 }
 
+function photon_cache_headers( $expires=63115200 ) {
+	header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + $expires ) . ' GMT' );
+	header( 'Cache-Control: public, max-age='.$expires );
+	header( 'X-Content-Type-Options: nosniff' );
+	}
+
 $image = new Gmagick();
 
 $parsed = parse_url( $_SERVER['REQUEST_URI'] );
@@ -535,12 +541,6 @@ try {
 		}
 	}
 
-	$expires = 63115200;
-
-	header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + $expires ) . ' GMT' );
-	header( 'Cache-Control: public, max-age='.$expires );
-	header( 'X-Content-Type-Options: nosniff' );
-
 	switch ( strtolower( $image->getimageformat() ) ) {
 		case 'png': 
 			do_action( 'bump_stats', 'image_png' );
@@ -552,17 +552,19 @@ try {
 			exec( OPTIPNG . " $tmp" );
 			clearstatcache();
 			$save = $og - filesize( $tmp );
-			header( 'Content-Length: ' . filesize( $tmp ) );
-			header( 'X-Bytes-Saved: ' . $save );
 			do_action( 'bump_stats', 'png_bytes_saved', $save );
 			$fp = fopen( $tmp, 'r' );
 			unlink( $tmp );
+			photon_cache_headers();
+			header( 'Content-Length: ' . filesize( $tmp ) );
+			header( 'X-Bytes-Saved: ' . $save );
 			fpassthru( $fp );
 			break;
 		case 'gif': 
 			do_action( 'bump_stats', 'image_gif' );
 			header( 'Content-Type: image/gif' );
 			$image->setcompressionquality( $quality );
+			photon_cache_headers();
 			echo $image->getimageblob();
 			break;
 		default: 
@@ -575,11 +577,12 @@ try {
 			exec( JPEGOPTIM . " -p $tmp" );
 			clearstatcache();
 			$save = $og - filesize( $tmp );
-			header( 'Content-Length: ' . filesize( $tmp ) );
-			header( 'X-Bytes-Saved: ' . $save );
 			do_action( 'bump_stats', 'jpg_bytes_saved', $save );
 			$fp = fopen( $tmp, 'r' );
 			unlink( $tmp );
+			photon_cache_headers();
+			header( 'Content-Length: ' . filesize( $tmp ) );
+			header( 'X-Bytes-Saved: ' . $save );
 			fpassthru( $fp );
 			break ;
 	}
