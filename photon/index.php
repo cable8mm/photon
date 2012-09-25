@@ -31,6 +31,9 @@ $allowed_types = apply_filters( 'allowed_types', array(
 // Expects a trailing slash
 $tmpdir = apply_filters( 'tmpdir', '/tmp/' );
 
+// Array of domains from which we try to fetch any URL, not just ones with image extensions
+$origin_domain_exceptions = apply_filters( 'origin_domain_exceptions', array() );
+
 require dirname( __FILE__ ) . '/libjpeg.php';
 
 // Implicit configuration
@@ -493,11 +496,15 @@ function photon_cache_headers( $expires=63115200 ) {
 $image = new Gmagick();
 
 $parsed = parse_url( $_SERVER['REQUEST_URI'] );
+$exploded = explode( '/', $_SERVER['REQUEST_URI'] );
+$origin_domain = $exploded[1];
+
 $scheme = 'http' . ( array_key_exists( 'ssl', $_GET ) ? 's' : '' ) . '://';
 parse_str( ( empty( $parsed['query'] ) ? '' : $parsed['query'] ),  $_GET  );
 
 $ext = pathinfo( $parsed['path'], PATHINFO_EXTENSION );
-if ( ! in_array( strtolower( $ext ), $allowed_types ) )
+
+if ( ! in_array( strtolower( $ext ), $allowed_types ) && !in_array( strtolower( $origin_domain), $origin_domain_exceptions ) )
 	httpdie( '400 Bad Request', 'The type of image you are trying to process is not allowed' );
 
 $url = $scheme . substr( $parsed['path'], 1 );
@@ -554,10 +561,10 @@ try {
 			$save = $og - filesize( $tmp );
 			do_action( 'bump_stats', 'png_bytes_saved', $save );
 			$fp = fopen( $tmp, 'r' );
-			unlink( $tmp );
 			photon_cache_headers();
 			header( 'Content-Length: ' . filesize( $tmp ) );
 			header( 'X-Bytes-Saved: ' . $save );
+			unlink( $tmp );
 			fpassthru( $fp );
 			break;
 		case 'gif': 
@@ -579,10 +586,10 @@ try {
 			$save = $og - filesize( $tmp );
 			do_action( 'bump_stats', 'jpg_bytes_saved', $save );
 			$fp = fopen( $tmp, 'r' );
-			unlink( $tmp );
 			photon_cache_headers();
 			header( 'Content-Length: ' . filesize( $tmp ) );
 			header( 'X-Bytes-Saved: ' . $save );
+			unlink( $tmp );
 			fpassthru( $fp );
 			break ;
 	}
