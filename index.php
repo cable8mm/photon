@@ -34,6 +34,10 @@ $tmpdir = apply_filters( 'tmpdir', '/tmp/' );
 // Array of domains from which we try to fetch any URL, not just ones with image extensions
 $origin_domain_exceptions = apply_filters( 'origin_domain_exceptions', array() );
 
+// You can override this by defining it in config.php
+if ( ! defined( 'PHOTON__UPSCALE_MAX_PIXELS' ) )
+	define( 'PHOTON__UPSCALE_MAX_PIXELS', 1000 );
+
 require dirname( __FILE__ ) . '/libjpeg.php';
 
 // Implicit configuration
@@ -92,10 +96,11 @@ function crop( &$image, $args ) {
  *
  * @param (resource)image the source gd image resource
  * @param (string)args "/^[0-9]+%?$/" the new height in pixels, or as a percentage if suffixed with an %
+ * @param boolean $upscale Whether to allow upscaling or not, defaults to not allowing.
  *
  * @return (resource) the resulting gs image resource
  **/
-function setheight( &$image, $args ) {
+function setheight( &$image, $args, $upscale = false ) {
 	$w = $image->getimagewidth();
 	$h = $image->getimageheight();
 	
@@ -104,7 +109,14 @@ function setheight( &$image, $args ) {
 	else
 		$new_height = intval( $args );
 
-	if ( ! $new_height || $new_height > $h )
+	// New height can't be calculated, then bail 
+	if ( ! $new_height )
+		return;
+	// New height is greater than original image, but we don't have permission to upscale
+	if ( $new_height > $h && ! $upscale )
+		return;
+	// Sane limit when upscaling, defaults to 1000
+	if ( $new_height > $h && $upscale && $new_height > PHOTON__UPSCALE_MAX_PIXELS ) 
 		return;
 
 	$ratio = $h / $new_height;
@@ -121,10 +133,11 @@ function setheight( &$image, $args ) {
  *
  * @param (resource)image the source gd image resource
  * @param (string)args "/^[0-9]+%?$/" the new width in pixels, or as a percentage if suffixed with an %
+ * @param boolean $upscale Whether to allow upscaling or not, defaults to not allowing.
  *
  * @return (resource) the resulting gs image resource
  **/
-function setwidth( &$image, $args ) {
+function setwidth( &$image, $args, $upscale = false ) {
 	$w = $image->getimagewidth();
 	$h = $image->getimageheight();
 	
@@ -133,7 +146,14 @@ function setwidth( &$image, $args ) {
 	else
 		$new_width = intval( $args );
 
-	if ( ! $new_width || $new_width > $w )
+	// New width can't be calculated, then bail 
+	if ( ! $new_width )
+		return;
+	// New height is greater than original image, but we don't have permission to upscale
+	if ( $new_width > $h && ! $upscale )
+		return;
+	// Sane limit when upscaling, defaults to 1000
+	if ( $new_width > $h && $upscale && $new_width > PHOTON__UPSCALE_MAX_PIXELS ) 
 		return;
 
 	$ratio = $w / $new_width;
@@ -220,18 +240,18 @@ function resize_and_crop( &$image, $args ) {
 
 	// If the original and new images are proportional (no cropping needed), just do a standard resize
 	if ( $ratio_orig == $ratio_end )
-		setwidth( $image, $end_w );
+		setwidth( $image, $end_w, true );
 
 	// If we need to crop off the sides
 	elseif ( $ratio_orig > $ratio_end ) {
-		setheight( $image, $end_h );
+		setheight( $image, $end_h, true );
 		$x = floor( ( $image->getimagewidth() - $end_w ) / 2 );
 		crop( $image, "{$x}px,0px,{$end_w}px,{$end_h}px" );
 	}
 
 	// If we need to crop off the top/bottom
 	elseif ( $ratio_orig < $ratio_end ) {
-		setwidth( $image, $end_w );
+		setwidth( $image, $end_w, true );
 		$y = floor( ( $image->getimageheight() - $end_h ) / 2 );
 		crop( $image, "0px,{$y}px,{$end_w}px,{$end_h}px" );
 	}
