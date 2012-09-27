@@ -72,7 +72,7 @@ function crop( &$image, $args ) {
 	if ( substr( $args[3], -2 ) == 'px' )
 		$new_h = max( 0, min( $h, intval( $args[3] ) ) );
 	else
-		$new_h = round( $w * abs( intval( $args[3] ) ) / 100 );
+		$new_h = round( $h * abs( intval( $args[3] ) ) / 100 );
 
 	if ( substr( $args[0], -2 ) == 'px' )
 		$s_x = intval( $args[0] );
