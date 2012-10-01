@@ -1,5 +1,8 @@
 <?php
 
+define( 'PHOTON__ALLOW_ANY_EXTENSION', 1 );
+define( 'PHOTON__ALLOW_QUERY_STRINGS', 2 );
+
 require dirname( __FILE__ ) . '/plugin.php';
 if ( file_exists( dirname( __FILE__ ) . '/../config.php' ) )
 	require dirname( __FILE__ ) . '/../config.php';
@@ -8,6 +11,7 @@ else if ( file_exists( dirname( __FILE__ ) . '/config.php' ) )
 
 // Explicit Configuration
 $allowed_functions = apply_filters( 'allowed_functions', array(
+//	'q'           => RESERVED
 	'h'           => 'setheight',       // done
 	'w'           => 'setwidth',        // done
 	'crop'        => 'crop',            // done
@@ -21,6 +25,8 @@ $allowed_functions = apply_filters( 'allowed_functions', array(
 	'fit'         => 'fit_in_box',      // compat
 ) );
 
+unset( $allowed_functions['q'] );
+
 $allowed_types = apply_filters( 'allowed_types', array(
 	'gif',
 	'jpg',
@@ -31,7 +37,12 @@ $allowed_types = apply_filters( 'allowed_types', array(
 // Expects a trailing slash
 $tmpdir = apply_filters( 'tmpdir', '/tmp/' );
 
-// Array of domains from which we try to fetch any URL, not just ones with image extensions
+/* Array of domains exceptions
+ * Keys are domain name
+ * Values are bitmasks with the following options:
+ * PHOTON__ALLOW_ANY_EXTENSION: Allow any extension (including none) in the path of the URL
+ * PHOTON__ALLOW_QUERY_STRINGS: Append the string found in the 'q' query string parameter as the query string of the remote URL
+ */
 $origin_domain_exceptions = apply_filters( 'origin_domain_exceptions', array() );
 
 // You can override this by defining it in config.php
@@ -518,19 +529,29 @@ $image = new Gmagick();
 
 $parsed = parse_url( $_SERVER['REQUEST_URI'] );
 $exploded = explode( '/', $_SERVER['REQUEST_URI'] );
-$origin_domain = $exploded[1];
+$origin_domain = strtolower( $exploded[1] );
+$origin_domain_exception = array_key_exists( $origin_domain, $origin_domain_exceptions ) ? $origin_domain_exceptions[$origin_domain] : 0;
 
 $scheme = 'http' . ( array_key_exists( 'ssl', $_GET ) ? 's' : '' ) . '://';
 parse_str( ( empty( $parsed['query'] ) ? '' : $parsed['query'] ),  $_GET  );
 
-$ext = pathinfo( $parsed['path'], PATHINFO_EXTENSION );
+$ext = strtolower( pathinfo( $parsed['path'], PATHINFO_EXTENSION ) );
 
-if ( ! in_array( strtolower( $ext ), $allowed_types ) && !in_array( strtolower( $origin_domain), $origin_domain_exceptions ) )
+if ( ! in_array( $ext, $allowed_types ) && !( $origin_domain_exception & PHOTON__ALLOW_ANY_EXTENSION ) )
 	httpdie( '400 Bad Request', 'The type of image you are trying to process is not allowed' );
 
 $url = $scheme . substr( $parsed['path'], 1 );
 $url = preg_replace( '/#.*$/', '', $url );
 $url = apply_filters( 'url', $url );
+
+if ( isset( $_GET['q'] ) ) {
+	if ( $origin_domain_exception & PHOTON__ALLOW_QUERY_STRINGS ) {
+		$url .= '?' . preg_replace( '/#.*$/', '', (string) $_GET['q'] );
+		unset( $_GET['q'] );
+	} else {
+		httpdie( '400 Bad Request', "Sorry, the parameters you provided were not valid" );
+	}
+}
 
 if ( false === filter_var( $url, FILTER_VALIDATE_URL, FILTER_FLAG_PATH_REQUIRED ) )
 	httpdie( '400 Bad Request', "Sorry, the parameters you provided were not valid" );
