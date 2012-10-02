@@ -161,10 +161,10 @@ function setwidth( &$image, $args, $upscale = false ) {
 	if ( ! $new_width )
 		return;
 	// New height is greater than original image, but we don't have permission to upscale
-	if ( $new_width > $h && ! $upscale )
+	if ( $new_width > $w && ! $upscale )
 		return;
 	// Sane limit when upscaling, defaults to 1000
-	if ( $new_width > $h && $upscale && $new_width > PHOTON__UPSCALE_MAX_PIXELS ) 
+	if ( $new_width > $w && $upscale && $new_width > PHOTON__UPSCALE_MAX_PIXELS ) 
 		return;
 
 	$ratio = $w / $new_width;
