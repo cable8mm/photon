@@ -12,6 +12,7 @@ else if ( file_exists( dirname( __FILE__ ) . '/config.php' ) )
 // Explicit Configuration
 $allowed_functions = apply_filters( 'allowed_functions', array(
 //	'q'           => RESERVED
+//	'zoom'        => global resolution multiplier (argument filter)
 	'h'           => 'setheight',       // done
 	'w'           => 'setwidth',        // done
 	'crop'        => 'crop',            // done
@@ -61,6 +62,58 @@ if ( file_exists( '/usr/local/bin/jpegoptim' ) )
 	define( 'JPEGOPTIM', '/usr/local/bin/jpegoptim' );
 else
 	define( 'JPEGOPTIM', false );
+
+/**
+ * zoom - ( "zoom" function via the uri ) - Intended for improving visuals
+ * on high pixel ratio devices and browsers when zoomed in. No zoom in crop.
+ *
+ * Valid zoom levels are 1,1.5,2-10.
+ */
+function zoom( $arguments, $function_name ) {
+	static $zoom;
+
+	if ( !isset( $zoom ) ) {
+		if ( isset( $_GET['zoom'] ) ) {
+			$zoom = floatval( $_GET['zoom'] );
+			// Clamp to 1-10
+			$zoom = max( 1, $zoom );
+			$zoom = min( 10, $zoom );
+			if ( $zoom < 2 ) {
+				// Round UP to the nearest half
+				$zoom = ceil( $zoom * 2 ) / 2;
+			} else {
+				// Round UP to the nearest integer
+				$zoom = ceil( $zoom );
+			}
+		} else {
+			$zoom = false;
+		}
+	}
+
+	if ( $zoom <= 1 )
+		return $arguments;
+
+	switch ( $function_name ) {
+		case 'setheight' :
+		case 'setwidth' :
+			$new_arguments = $arguments * $zoom;
+			if ( substr( $arguments, -1 ) == '%' )
+				$new_arguments .= '%';
+			break;
+		case 'fit_in_box' :
+		case 'resize_and_crop' :
+			list( $width, $height ) = explode( ',', $arguments );
+			$width *= $zoom;
+			$height *= $zoom;
+			$new_arguments = "$width,$height";
+			break;
+		default :
+			$new_arguments = $arguments;
+	}
+
+	return $new_arguments;
+}
+add_filter( 'arguments', 'zoom', 10, 2 );
 
 /**
  * crop - ("crop" function via the uri) - crop an image
@@ -522,6 +575,7 @@ function do_a_filter( $function_name, $arguments ) {
 	$function_name = $allowed_functions[$function_name];
 	if ( function_exists( $function_name ) && is_callable( $function_name ) ) {
 		do_action( 'bump_stats', $function_name );
+		$arguments = apply_filters( 'arguments', $arguments, $function_name );
 		$function_name( $image, $arguments );
 	}
 }
