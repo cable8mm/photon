@@ -132,8 +132,8 @@ function setheight( &$image, $args, $upscale = false ) {
 
 	$ratio = $h / $new_height;
 
-	$new_w = floor( $w / $ratio );
-	$new_h = floor( $h / $ratio );
+	$new_w = round( $w / $ratio );
+	$new_h = round( $h / $ratio );
 	$s_x = $s_y = 0;
 	
 	$image->resizeimage( $new_w, $new_h, Gmagick::FILTER_UNDEFINED, 1 );
@@ -202,8 +202,15 @@ function fit_in_box( &$image, $args ) {
 
 	$ratio = max( $w / $width, $h / $height );
 
-	$new_w = floor( $w / $ratio );
-	$new_h = floor( $h / $ratio );
+	$new_w = round( $w / $ratio );
+	$new_h = round( $h / $ratio );
+
+	// Make sure rounding didn't round up and above the requested values
+	if ( $new_w > $width )
+		 $new_w = $width;
+	if ( $new_h > $height )
+		 $new_h = $height;
+
 	$s_x = $s_y = 0;
 
 	// Preserve transparency	
