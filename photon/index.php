@@ -189,7 +189,7 @@ function setheight( &$image, $args, $upscale = false ) {
 	$new_h = round( $h / $ratio );
 	$s_x = $s_y = 0;
 	
-	$image->resizeimage( $new_w, $new_h, Gmagick::FILTER_UNDEFINED, 1 );
+	$image->scaleimage( $new_w, $new_h );
 }
 
 /**
@@ -226,7 +226,7 @@ function setwidth( &$image, $args, $upscale = false ) {
 	$new_h = round( $h / $ratio );
 	$s_x = $s_y = 0;
 
-	$image->resizeimage( $new_w, $new_h, Gmagick::FILTER_UNDEFINED, 1 );
+	$image->scaleimage( $new_w, $new_h );
 }
 
 /**
