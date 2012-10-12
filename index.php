@@ -17,13 +17,13 @@ $allowed_functions = apply_filters( 'allowed_functions', array(
 	'w'           => 'setwidth',        // done
 	'crop'        => 'crop',            // done
 	'resize'      => 'resize_and_crop', // done
+	'fit'         => 'fit_in_box',      // done
 	'ulb'         => 'unletterbox',     // compat
 	'filter'      => 'filter',          // compat
 	'brightness'  => 'brightness',      // compat
 	'contrast'    => 'contrast',        // compat
 	'colorize'    => 'colorize',        // compat
 	'smooth'      => 'smooth',          // compat
-	'fit'         => 'fit_in_box',      // compat
 ) );
 
 unset( $allowed_functions['q'] );
@@ -238,49 +238,21 @@ function setwidth( &$image, $args, $upscale = false ) {
  * @return (resource) the resulting gs image resource
  **/
 function fit_in_box( &$image, $args ) {
-	gmagick_to_gd( $image );
-	$w = imagesx( $image );
-	$h = imagesy( $image );
+	$w = $image->getimagewidth();
+	$h = $image->getimageheight();
 
-	list( $width, $height ) = array_map( 'abs', array_map( 'intval', explode( ',', $args ) ) );
-	if ( ( $w == $width && $h == $height ) ||
-		! $width || ! $height || ( $w < $width && $h < $height )
+	list( $end_w, $end_h ) = explode( ',', $args );
+
+	$end_w = abs( intval( $end_w ) );
+	$end_h = abs( intval( $end_h ) );
+
+	if ( ( $w == $end_w && $h == $end_h ) ||
+		! $end_w || ! $end_h || ( $w < $end_w && $h < $end_h )
 	) {
-		gd_to_gmagick( $image );
 		return;
 	}
 
-	$width_constraint  = $w / $width;
-	$height_constraint = $h / $height;
-
-	$ratio = max( $w / $width, $h / $height );
-
-	$new_w = round( $w / $ratio );
-	$new_h = round( $h / $ratio );
-
-	// Make sure rounding didn't round up and above the requested values
-	if ( $new_w > $width )
-		 $new_w = $width;
-	if ( $new_h > $height )
-		 $new_h = $height;
-
-	$s_x = $s_y = 0;
-
-	// Preserve transparency	
-	$orig_transparent = imagecolortransparent( $image );
-	if ( $orig_transparent >= 0 ) {
-		$new_i = imagecreate( $new_w, $new_h );
-		$trans_color = imagecolorsforindex($image, $orig_transparent);
-		$new_transparent = imagecolorallocate($new_i, $trans_color['red'], $trans_color['green'], $trans_color['blue']);
-		imagefill($new_i, 0, 0, $new_transparent);
-		imagecolortransparent($new_i, $new_transparent);
-	} else {
-		$new_i = imagecreatetruecolor( $new_w, $new_h );
-	}
-	
-	imagecopyresampled( $new_i, $image, 0, 0, $s_x, $s_y, $new_w, $new_h, $w, $h );
-	$image = $new_i;
-	gd_to_gmagick( $image );
+	$image->scaleimage( $end_w, $end_h, true );
 }
 
 /**
@@ -326,8 +298,6 @@ function resize_and_crop( &$image, $args ) {
 		$y = floor( ( $image->getimageheight() - $end_h ) / 2 );
 		crop( $image, "0px,{$y}px,{$end_w}px,{$end_h}px" );
 	}
-
-	return;
 }
 
 /**
