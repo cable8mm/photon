@@ -434,7 +434,11 @@ function filter( &$image, $filter ) {
  * @return resource The resulting GD imageresource
  **/
 function brightness( &$image, $brightness ) {
-	$image->modulateimage( (float) $brightness, null, null );
+	$brightness = (int) $brightness;
+
+	gmagick_to_gd( $image );
+	imagefilter( $image, IMG_FILTER_BRIGHTNESS, $brightness );
+	gd_to_gmagick( $image );
 }
 
 /**
