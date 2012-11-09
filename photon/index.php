@@ -454,7 +454,7 @@ function contrast( &$image, $contrast ) {
 	$contrast = (int) $contrast;
 
 	gmagick_to_gd( $image );
-	imagefilter( $image, IMG_FILTER_BRIGHTNESS, $contrast * -1 ); // Make +value increase contrast
+	imagefilter( $image, IMG_FILTER_CONTRAST, $contrast * -1 ); // Make +value increase contrast
 	gd_to_gmagick( $image );
 }
 
