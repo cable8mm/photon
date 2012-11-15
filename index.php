@@ -527,7 +527,7 @@ function gd_to_gmagick( &$image ) {
 	$image->readimageblob( ob_get_clean() );
 }
 
-function fetch_raw_data( $url, $timeout=5, $connect_timeout=2 ) {
+function fetch_raw_data( $url, $timeout=10, $connect_timeout=2 ) {
 	$ch = curl_init( $url );
 	curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
 	curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, $connect_timeout );
