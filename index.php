@@ -306,11 +306,14 @@ function resize_and_crop( &$image, $args ) {
  * Removes black letterboxing bands from the top and bottom of an image
  *
  * $param (resource) img the source gd image resource
- * $param (string) args "" (the function takes no arguments)
+ * $param (string) args true is the only acceptable argument
  *
  * @return (resource)image the resulting image gd resource
  **/
 function unletterbox( &$img, $args ) {
+	if ( 'true' !== $args )
+		return $img;
+
 	gmagick_to_gd( $img );
 
 	// rgb values averaged per pixel, and then those averaged for the entire row
