@@ -69,7 +69,7 @@ else
  *
  * Valid zoom levels are 1,1.5,2-10.
  */
-function zoom( $arguments, $function_name ) {
+function zoom( $arguments, $function_name, $image ) {
 	static $zoom;
 
 	if ( !isset( $zoom ) ) {
@@ -93,6 +93,9 @@ function zoom( $arguments, $function_name ) {
 	if ( $zoom <= 1 )
 		return $arguments;
 
+	$w = $image->getimagewidth();
+	$h = $image->getimageheight();
+
 	switch ( $function_name ) {
 		case 'setheight' :
 		case 'setwidth' :
@@ -103,9 +106,20 @@ function zoom( $arguments, $function_name ) {
 		case 'fit_in_box' :
 		case 'resize_and_crop' :
 			list( $width, $height ) = explode( ',', $arguments );
-			$width *= $zoom;
-			$height *= $zoom;
-			$new_arguments = "$width,$height";
+			$new_width = $width * $zoom;
+			$new_height = $height * $zoom;
+			// Avoid dimensions larger than original.
+			while ( ( $new_width > $w || $new_height > $h ) && $zoom > 1 ) {
+				// Step down to the next lower zoom level.
+				if ( $zoom > 2 ) {
+					$zoom -= 1;
+				} else {
+					$zoom -= 0.5;
+				}
+				$new_width = $width * $zoom;
+				$new_height = $height * $zoom;
+			}
+			$new_arguments = "$new_width,$new_height";
 			break;
 		default :
 			$new_arguments = $arguments;
@@ -113,7 +127,7 @@ function zoom( $arguments, $function_name ) {
 
 	return $new_arguments;
 }
-add_filter( 'arguments', 'zoom', 10, 2 );
+add_filter( 'arguments', 'zoom', 10, 3 );
 
 /**
  * crop - ("crop" function via the uri) - crop an image
@@ -552,7 +566,7 @@ function do_a_filter( $function_name, $arguments ) {
 	$function_name = $allowed_functions[$function_name];
 	if ( function_exists( $function_name ) && is_callable( $function_name ) ) {
 		do_action( 'bump_stats', $function_name );
-		$arguments = apply_filters( 'arguments', $arguments, $function_name );
+		$arguments = apply_filters( 'arguments', $arguments, $function_name, $image );
 		$function_name( $image, $arguments );
 	}
 }
