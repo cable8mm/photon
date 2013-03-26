@@ -18,6 +18,7 @@ $allowed_functions = apply_filters( 'allowed_functions', array(
 	'crop'        => 'crop',            // done
 	'resize'      => 'resize_and_crop', // done
 	'fit'         => 'fit_in_box',      // done
+	'lb'          => 'letterbox',       // done
 	'ulb'         => 'unletterbox',     // compat
 	'filter'      => 'filter',          // compat
 	'brightness'  => 'brightness',      // compat
@@ -388,6 +389,51 @@ function unletterbox( &$img, $args ) {
 	crop( $img, $args );
 }
 // {{{ filter($image,$filter)
+
+/**
+ * Box resizes an image and fills the background with black
+ *
+ * @param object $image
+ * @param array $args
+ */
+function letterbox( &$image, $args ) {
+	$w = $image->getimagewidth();
+	$h = $image->getimageheight();
+
+	list( $end_w, $end_h ) = explode( ',', $args );
+
+	$end_w = abs( intval( $end_w ) );
+	$end_h = abs( intval( $end_h ) );
+
+	if ( ( $w == $end_w && $h == $end_h ) ||
+		! $end_w || ! $end_h || ( $w < $end_w && $h < $end_h )
+	) {
+		return;
+	}
+
+	$image->scaleimage( $end_w, $end_h, true );
+
+	$new_w = $image->getimagewidth();
+	$new_h = $image->getimageheight();
+	$border_h = round( ( $end_h - $new_h ) / 2 );
+	$border_w = round( ( $end_w - $new_w ) / 2 );
+
+	if ( $border_h > PHOTON__UPSCALE_MAX_PIXELS ||
+		$border_w > PHOTON__UPSCALE_MAX_PIXELS )
+	{
+		return;
+	}
+
+	$image->borderimage('#000', $border_w, $border_h );
+
+	// Since we create the borders with rounded values
+	// we have to chop any excessive pixels off.
+	$crop_x = $border_w * 2 + $new_w - $end_w;
+	$crop_y = $border_h * 2 + $new_h - $end_h;
+	if ( $crop_x || $crop_y )
+		$image->cropimage( $end_w, $end_h, $crop_x, $crop_y );
+}
+
 /**
  * filter - ("filter" via the uri) - originally by Alex M.
  *
