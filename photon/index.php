@@ -6,7 +6,7 @@ define( 'PHOTON__ALLOW_QUERY_STRINGS', 2 );
 require dirname( __FILE__ ) . '/plugin.php';
 if ( file_exists( dirname( __FILE__ ) . '/../config.php' ) )
 	require dirname( __FILE__ ) . '/../config.php';
-else if ( file_exists( dirname( __FILE__ ) . '/config.php' ) ) 
+else if ( file_exists( dirname( __FILE__ ) . '/config.php' ) )
 	require dirname( __FILE__ ) . '/config.php';
 
 // Explicit Configuration
@@ -38,6 +38,7 @@ $allowed_types = apply_filters( 'allowed_types', array(
 
 // Expects a trailing slash
 $tmpdir = apply_filters( 'tmpdir', '/tmp/' );
+$remote_image_max_size = apply_filters( 'remote_image_max_size', 55 * 1024 * 1024 );
 
 /* Array of domains exceptions
  * Keys are domain name
@@ -590,9 +591,8 @@ function gd_to_gmagick( &$image ) {
 	$image->readimageblob( ob_get_clean() );
 }
 
-function fetch_raw_data( $url, $timeout=10, $connect_timeout=2 ) {
+function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 2 ) {
 	$ch = curl_init( $url );
-	curl_setopt( $ch, CURLOPT_RETURNTRANSFER, true );
 	curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, $connect_timeout );
 	curl_setopt( $ch, CURLOPT_TIMEOUT, $timeout );
 	curl_setopt( $ch, CURLOPT_SSLVERSION, 3 );
@@ -600,6 +600,19 @@ function fetch_raw_data( $url, $timeout=10, $connect_timeout=2 ) {
 	curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
 	curl_setopt( $ch, CURLOPT_MAXREDIRS, 3 );
 	curl_setopt( $ch, CURLOPT_USERAGENT, 'Photon/1.0' );
+	curl_setopt( $ch, CURLOPT_WRITEFUNCTION, function( $curl_handle, $data ) {
+		global $raw_data, $raw_data_size, $remote_image_max_size;
+
+		$data_size = strlen( $data );
+		$raw_data .= $data;
+		$raw_data_size += $data_size;
+
+		if ( $raw_data_size > $remote_image_max_size )
+			httpdie( '400 Bad Request', "You can only process images up to $remote_image_max_size bytes." );
+
+		return $data_size;
+	} );
+
 	return curl_exec( $ch );
 }
 
@@ -654,15 +667,14 @@ if ( isset( $_GET['q'] ) ) {
 if ( false === filter_var( $url, FILTER_VALIDATE_URL, FILTER_FLAG_PATH_REQUIRED ) )
 	httpdie( '400 Bad Request', "Sorry, the parameters you provided were not valid" );
 
-// Uncomment to automatically unletterbox all ytimg.com images
-//if ( false !== strpos( $url, '.ytimg.com/' ) )
-//	$_GET['ulb'] = '';
-$raw = fetch_raw_data( $url );
-if ( empty( $raw ) )
+$raw_data = '';
+$raw_data_size = 0;
+fetch_raw_data( $url );
+if ( empty( $raw_data ) )
 	httpdie( '504 Gateway Timeout', 'We cannot complete this request, remote data could not be fetched' );
 
 try {
-	$image->readimageblob( $raw );
+	$image->readimageblob( $raw_data );
 	$type = $image->getimageformat();
 } catch ( GmagickException $e ) {
 	httpdie( '400 Bad Request', 'We cannot complete this request, remote data was invalid' );
@@ -672,10 +684,10 @@ if ( !in_array( strtolower( $type ), $allowed_types ) )
 	httpdie( '400 Bad Request', 'The type of image you are trying to process is not allowed' );
 
 if ( $type == 'JPEG' )
-	$quality = get_jpeg_quality( $raw );
+	$quality = get_jpeg_quality( $raw_data, $raw_data_size );
 else
 	$quality = 90;
-unset( $raw );
+unset( $raw_data );
 
 try {
 	// Run through all uri supplied functions which are valid and allowed
