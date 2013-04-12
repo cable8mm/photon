@@ -1,13 +1,13 @@
 <?php
 
-function get_jpeg_header_data( &$buff, $want=null ) { 
-	$data = buffer_read( $buff, 2, true ); // Read the first two characters
+function get_jpeg_header_data( &$buff, $buff_len, $want=null ) { 
+	$data = buffer_read( $buff, $buff_len, 2, true ); // Read the first two characters
 	// Check that the first two characters are 0xFF 0xDA  (SOI - Start of image)
 	if ( $data != "\xFF\xD8" ) {
 		// No SOI (FF D8) at start of file - This probably isn't a JPEG file - close file and return;
 		return false;
 	}
-	$data = buffer_read( $buff, 2 ); // Read the third character
+	$data = buffer_read( $buff, $buff_len, 2 ); // Read the third character
 	// Check that the third character is 0xFF (Start of first segment header)
 	if ( $data{0} != "\xFF" ) {
 		// NO FF found - close file and return - JPEG is probably corrupted
@@ -24,12 +24,12 @@ function get_jpeg_header_data( &$buff, $want=null ) {
 		// Check that the segment marker is not a Restart marker - restart markers don't have size or data after them
 		if (  ( ord($data{1}) < 0xD0 ) || ( ord($data{1}) > 0xD7 ) ) {
 			// Segment isn't a Restart marker
-			$sizestr = buffer_read( $buff, 2 ); // Read the next two bytes (size)
+			$sizestr = buffer_read( $buff, $buff_len, 2 ); // Read the next two bytes (size)
 			if ( null === $sizestr )
 				break;
 			$decodedsize = unpack ("nsize", $sizestr); // convert the size bytes to an integer
 			// Read the segment data with length indicated by the previously read size
-			$segdata = buffer_read( $buff, $decodedsize['size'] - 2 );
+			$segdata = buffer_read( $buff, $buff_len, $decodedsize['size'] - 2 );
 			// Store the segment information in the output array
 			if ( !$want || $want == ord($data{1}) ) {
 				$headerdata[] = (object)array(  
@@ -45,7 +45,7 @@ function get_jpeg_header_data( &$buff, $want=null ) {
 			$hit_compressed_image_data = true;
 		} else {
 			// Not an SOS - Read the next two bytes - should be the segment marker for the next segment
-			$data = buffer_read( $buff, 2 );
+			$data = buffer_read( $buff, $buff_len, 2 );
 			// Check that the first byte of the two is 0xFF as it should be for a marker
 			if ( $data{0} != "\xFF" ) {
 				// NO FF found - close file and return - JPEG is probably corrupted
@@ -56,17 +56,21 @@ function get_jpeg_header_data( &$buff, $want=null ) {
 	return $headerdata;
 }
 
-function buffer_read( &$buff, $len, $new=false ) {
+function buffer_read( &$buff, $buff_len, $len, $new=false ) {
 	static $pointer = 0;
 	if ( $new )
 		$pointer = 0;
-	if ( $pointer + $len > strlen( $buff ) ) {
-		$len = strlen( $buff ) - $pointer;
+	if ( $pointer + $len > $buff_len ) {
+		$len = $buff_len - $pointer;
 		if ( $len < 1 )
 			return null;
 	}
-	$data = substr( $buff, $pointer, $len );
-	$pointer += $len;
+
+	// substr() is slower and doubles the peak memory usage
+	$data = '';
+	while ( $len-- )
+		$data .= $buff[$pointer++];
+
 	return $data;
 }
 
@@ -174,7 +178,7 @@ $GLOBALS[ "JPEG_Segment_Descriptions" ] = array(
  * See: http://www.impulseadventure.com/photo/jpeg-quantization.html
  * See: http://www.impulseadventure.com/photo/jpeg-huffman-coding.html
  */
-function get_jpeg_quality( &$buff ) {
+function get_jpeg_quality( &$buff, $buff_len = null ) {
 	$tables = array(
 		'multi' => array(
 			'hash' => array(
@@ -236,7 +240,10 @@ function get_jpeg_quality( &$buff ) {
 		), // single
 	); // tables
 	
-	$headers = get_jpeg_header_data( $buff, 0xDB );
+	if ( ! isset( $buff_len ) )
+		$buff_len = strlen( $buff );
+
+	$headers = get_jpeg_header_data( $buff, $buff_len, 0xDB );
 	if ( !is_array( $headers ) || !count( $headers ) )
 		return 100;
 	$header = $headers[0];	
