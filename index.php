@@ -669,8 +669,8 @@ if ( false === filter_var( $url, FILTER_VALIDATE_URL, FILTER_FLAG_PATH_REQUIRED 
 
 $raw_data = '';
 $raw_data_size = 0;
-fetch_raw_data( $url );
-if ( empty( $raw_data ) )
+$fetched = fetch_raw_data( $url );
+if ( ! $fetched || empty( $raw_data ) )
 	httpdie( '504 Gateway Timeout', 'We cannot complete this request, remote data could not be fetched' );
 
 try {
