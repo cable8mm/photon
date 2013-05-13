@@ -600,6 +600,8 @@ function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 2 ) {
 	curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
 	curl_setopt( $ch, CURLOPT_MAXREDIRS, 3 );
 	curl_setopt( $ch, CURLOPT_USERAGENT, 'Photon/1.0' );
+	curl_setopt( $ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS );
+	curl_setopt( $ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS );
 	curl_setopt( $ch, CURLOPT_WRITEFUNCTION, function( $curl_handle, $data ) {
 		global $raw_data, $raw_data_size, $remote_image_max_size;
 
