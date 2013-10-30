@@ -136,7 +136,7 @@ add_filter( 'arguments', 'zoom', 10, 3 );
  *
  * @param (resource)image the source gd image resource
  * @param (string)args "x,y,w,h" widh each csv column being /^[0-9]+(px)?$/
- *                 all values in percentages by default, but can be set 
+ *                 all values in percentages by default, but can be set
  *                 to absolute pixel values by specifying px ie 25px
  *
  * @return (resource)image the resulting image gd resource
@@ -148,7 +148,7 @@ function crop( &$image, $args ) {
 	$w = $image->getimagewidth();
 	$h = $image->getimageheight();
 
-	if ( substr( $args[2], -2 ) == 'px' )	
+	if ( substr( $args[2], -2 ) == 'px' )
 		$new_w = max( 0, min( $w, intval( $args[2] ) ) );
 	else
 		$new_w = round( $w * abs( intval( $args[2] ) ) / 100 );
@@ -183,20 +183,20 @@ function crop( &$image, $args ) {
 function setheight( &$image, $args, $upscale = false ) {
 	$w = $image->getimagewidth();
 	$h = $image->getimageheight();
-	
+
 	if ( substr( $args, -1 ) == '%' )
 		$new_height = round( $h * abs( intval( $args ) ) / 100 );
 	else
 		$new_height = intval( $args );
 
-	// New height can't be calculated, then bail 
+	// New height can't be calculated, then bail
 	if ( ! $new_height )
 		return;
 	// New height is greater than original image, but we don't have permission to upscale
 	if ( $new_height > $h && ! $upscale )
 		return;
 	// Sane limit when upscaling, defaults to 1000
-	if ( $new_height > $h && $upscale && $new_height > PHOTON__UPSCALE_MAX_PIXELS ) 
+	if ( $new_height > $h && $upscale && $new_height > PHOTON__UPSCALE_MAX_PIXELS )
 		return;
 
 	$ratio = $h / $new_height;
@@ -204,7 +204,7 @@ function setheight( &$image, $args, $upscale = false ) {
 	$new_w = round( $w / $ratio );
 	$new_h = round( $h / $ratio );
 	$s_x = $s_y = 0;
-	
+
 	$image->scaleimage( $new_w, $new_h );
 }
 
@@ -220,20 +220,20 @@ function setheight( &$image, $args, $upscale = false ) {
 function setwidth( &$image, $args, $upscale = false ) {
 	$w = $image->getimagewidth();
 	$h = $image->getimageheight();
-	
+
 	if ( substr( $args, -1 ) == '%' )
 		$new_width = round( $w * abs( intval( $args ) ) / 100 );
 	else
 		$new_width = intval( $args );
 
-	// New width can't be calculated, then bail 
+	// New width can't be calculated, then bail
 	if ( ! $new_width )
 		return;
 	// New height is greater than original image, but we don't have permission to upscale
 	if ( $new_width > $w && ! $upscale )
 		return;
 	// Sane limit when upscaling, defaults to 1000
-	if ( $new_width > $w && $upscale && $new_width > PHOTON__UPSCALE_MAX_PIXELS ) 
+	if ( $new_width > $w && $upscale && $new_width > PHOTON__UPSCALE_MAX_PIXELS )
 		return;
 
 	$ratio = $w / $new_width;
@@ -333,7 +333,7 @@ function unletterbox( &$img, $args ) {
 	gmagick_to_gd( $img );
 
 	// rgb values averaged per pixel, and then those averaged for the entire row
-	$max_value_considered_black = 3; 
+	$max_value_considered_black = 3;
 
 	$width = imagesx( $img );
 	$height = imagesy( $img );
@@ -346,7 +346,7 @@ function unletterbox( &$img, $args ) {
 			$r = ( $rgb >> 16 ) & 0xFF;
 			$g = ( $rgb >> 8 ) & 0xFF;
 			$b = $rgb & 0xFF;
-			$line_value += round( ( $r + $g + $b ) / 3 ); 
+			$line_value += round( ( $r + $g + $b ) / 3 );
 		}
 		if ( round( $line_value/$width ) > $max_value_considered_black ) {
 			$first_nonblack_line = $h + 1;
@@ -366,7 +366,7 @@ function unletterbox( &$img, $args ) {
 			$r = ( $rgb >> 16 ) & 0xFF;
 			$g = ( $rgb >> 8 ) & 0xFF;
 			$b = $rgb & 0xFF;
-			$line_value += round( ( $r + $g + $b ) / 3 ); 
+			$line_value += round( ( $r + $g + $b ) / 3 );
 		}
 		if ( round( $line_value / $width ) > $max_value_considered_black ) {
 			$last_nonblack_line = $h;
@@ -538,7 +538,7 @@ function colorize( &$image, $colors ) {
 	$red   = ( !empty($color[0]) ) ? $color[0] : 0;
 	$green = ( !empty($color[1]) ) ? $color[1] : 0;
 	$blue  = ( !empty($color[2]) ) ? $color[2] : 0;
-	
+
 	gmagick_to_gd( $image );
 	imagefilter( $image, IMG_FILTER_COLORIZE, $red, $green, $blue );
 	gd_to_gmagick( $image );
@@ -568,7 +568,7 @@ function httpdie( $code='404 Not Found', $message='Error: 404 Not Found' ) {
 
 function gmagick_to_gd( &$image ) {
 	global $type;
-	if ( $type == "JPEG" )
+	if ( $type == "jpeg" )
 		$image->setcompressionquality( 100 );
 	$image = imagecreatefromstring( $image->getimageblob() );
 }
@@ -576,7 +576,7 @@ function gmagick_to_gd( &$image ) {
 function gd_to_gmagick( &$image ) {
 	global $type;
 	ob_start();
-	switch( strtolower( $type ) ) {
+	switch( $type ) {
 		case 'gif':
 			imagegif( $image, null );
 			break;
@@ -619,7 +619,7 @@ function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 2 ) {
 }
 
 function do_a_filter( $function_name, $arguments ) {
-	global $image, $allowed_functions;
+	global $image, $allowed_functions, $type;
 
 	if ( ! isset( $allowed_functions[$function_name] ) )
 		return;
@@ -627,8 +627,13 @@ function do_a_filter( $function_name, $arguments ) {
 	$function_name = $allowed_functions[$function_name];
 	if ( function_exists( $function_name ) && is_callable( $function_name ) ) {
 		do_action( 'bump_stats', $function_name );
-		$arguments = apply_filters( 'arguments', $arguments, $function_name, $image );
-		$function_name( $image, $arguments );
+		if ( 'gif' == $type ) {
+			/* allowed functions have identical names as private members of the Gif_Image class */
+			$image->add_function( $function_name, $arguments );
+		} else {
+			$arguments = apply_filters( 'arguments', $arguments, $function_name, $image );
+			$function_name( $image, $arguments );
+		}
 	}
 }
 
@@ -636,9 +641,7 @@ function photon_cache_headers( $expires=63115200 ) {
 	header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + $expires ) . ' GMT' );
 	header( 'Cache-Control: public, max-age='.$expires );
 	header( 'X-Content-Type-Options: nosniff' );
-	}
-
-$image = new Gmagick();
+}
 
 $parsed = parse_url( $_SERVER['REQUEST_URI'] );
 $exploded = explode( '/', $_SERVER['REQUEST_URI'] );
@@ -675,17 +678,24 @@ $fetched = fetch_raw_data( $url );
 if ( ! $fetched || empty( $raw_data ) )
 	httpdie( '504 Gateway Timeout', 'We cannot complete this request, remote data could not be fetched' );
 
-try {
-	$image->readimageblob( $raw_data );
-	$type = $image->getimageformat();
-} catch ( GmagickException $e ) {
-	httpdie( '400 Bad Request', 'We cannot complete this request, remote data was invalid' );
+if ( 'GIF' === substr( $raw_data, 0, 3 ) ) {
+	require dirname( __FILE__ ) . '/libgif.php';
+	$image = new Gif_Image( $raw_data );
+	$type = 'gif';
+} else {
+	try {
+		$image = new Gmagick();
+		$image->readimageblob( $raw_data );
+		$type = strtolower( $image->getimageformat() );
+	} catch ( GmagickException $e ) {
+		httpdie( '400 Bad Request', 'We cannot complete this request, remote data was invalid' );
+	}
 }
 
-if ( !in_array( strtolower( $type ), $allowed_types ) )
+if ( ! in_array( $type, $allowed_types ) )
 	httpdie( '400 Bad Request', 'The type of image you are trying to process is not allowed' );
 
-if ( $type == 'JPEG' )
+if ( $type == 'jpeg' )
 	$quality = get_jpeg_quality( $raw_data, $raw_data_size );
 else
 	$quality = 90;
@@ -702,8 +712,8 @@ try {
 		}
 	}
 
-	switch ( strtolower( $image->getimageformat() ) ) {
-		case 'png': 
+	switch ( $type ) {
+		case 'png':
 			do_action( 'bump_stats', 'image_png' );
 			header( 'Content-Type: image/png' );
 			$image->setcompressionquality( $quality );
@@ -721,14 +731,17 @@ try {
 			unlink( $tmp );
 			fpassthru( $fp );
 			break;
-		case 'gif': 
+		case 'gif':
 			do_action( 'bump_stats', 'image_gif' );
-			header( 'Content-Type: image/gif' );
-			$image->setcompressionquality( $quality );
-			photon_cache_headers();
-			echo $image->getimageblob();
+			if ( $image->process_image() ) {
+				photon_cache_headers();
+				header( 'Content-Type: image/gif' );
+				echo $image->get_imageblob();
+			} else {
+				httpdie( '400 Bad Request', "Sorry, the parameters you provided were not valid" );
+			}
 			break;
-		default: 
+		default:
 			do_action( 'bump_stats', 'image_jpeg' );
 			header( 'Content-Type: image/jpeg' );
 			$image->setcompressionquality( $quality );
@@ -745,7 +758,7 @@ try {
 			header( 'X-Bytes-Saved: ' . $save );
 			unlink( $tmp );
 			fpassthru( $fp );
-			break ;
+			break;
 	}
 
 } catch ( GmagickException $e ) {
