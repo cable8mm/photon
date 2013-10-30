@@ -26,7 +26,11 @@ if ( ! class_exists( 'Gif_Frame' ) ) {
 			$this->lc_mod   = $lc_mod;
 			$this->gr_mod   = $gr_mod;
 			$this->palette  = $palette;
-			$this->transp   = ord( $gr_mod[3] ) & 1 ? 1 : 0;
+
+			if ( strlen( $gr_mod ) == 8 )
+				$this->transp   = ord( $gr_mod[3] ) & 1 ? 1 : 0;
+			else
+				$this->transp   = 0;
 
 			$this->head     = $head;
 			$this->image    = $image;
@@ -79,7 +83,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 		private $pre_process_actions = Array();
 		private $post_process_actions = Array();
 
-		private static $pre_actions = Array( 'setheight', 'setwidth', 'crop', 'resize_and_crop' );
+		private static $pre_actions = Array( 'setheight', 'setwidth', 'crop', 'resize_and_crop', 'fit_in_box' );
 
 		const optimize = true;
 
@@ -180,7 +184,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 		private function parse_frames() {
 			$buffer = '';
 			while ( self::GIF_BLOCK_END != ord( $this->gif[ $this->ptr ] ) ) {
-				$gr_mod;
+				$gr_mod = '';
 				$this->frame_count++;
 
 				while ( self::GIF_BLOCK_IMAGE_DESCRIPTOR != ord( $this->gif[ $this->ptr ] ) ) {
@@ -405,6 +409,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 		}
 
 		private function process_frame( $img_data, $index ) {
+
 			// if a frame is transparent and does not fill the entire image size, we need to extend the frame
 			// to be full size to overcome resizing ratio differences between different size frames
 			if ( $this->frame_array[ $index ]->transp &&
@@ -545,11 +550,19 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 				$this->new_height = intval( $args );
 
 			// new height is invalid or is greater than original image, but we don't have permission to upscale
-			if ( ( ! $this->new_height ) || ( $this->new_height > $this->int_h && ! $upscale ) )
+			if ( ( ! $this->new_height ) || ( $this->new_height > $this->int_h && ! $upscale ) ) {
+				// if the sizes are too big, then we serve the original size
+				$this->new_width  = $this->int_w;
+				$this->new_height = $this->int_h;
 				return;
+			}
 			// sane limit when upscaling, defaults to 1000
-			if ( $this->new_height > $this->int_h && $upscale && $this->new_height > PHOTON__UPSCALE_MAX_PIXELS )
+			if ( $this->new_height > $this->int_h && $upscale && $this->new_height > PHOTON__UPSCALE_MAX_PIXELS ) {
+				// if the sizes are too big, then we serve the original size
+				$this->new_width  = $this->int_w;
+				$this->new_height = $this->int_h;
 				return;
+			}
 
 			$ratio = $this->new_height / $this->int_h;
 
@@ -566,11 +579,20 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 				$this->new_width = intval( $args );
 
 			// New width is invalid or is greater than original image, but we don't have permission to upscale
-			if ( ( ! $this->new_width ) || ( $this->new_width > $this->int_w && ! $upscale ) )
+			if ( ( ! $this->new_width ) || ( $this->new_width > $this->int_w && ! $upscale ) ) {
+				// if the sizes are too big, then we serve the original size
+				$this->new_width  = $this->int_w;
+				$this->new_height = $this->int_h;
 				return;
+			}
+
 			// Sane limit when upscaling, defaults to 1000
-			if ( $this->new_width > $this->int_w && $upscale && $this->new_width > PHOTON__UPSCALE_MAX_PIXELS )
+			if ( $this->new_width > $this->int_w && $upscale && $this->new_width > PHOTON__UPSCALE_MAX_PIXELS ) {
+				// if the sizes are too big, then we serve the original size
+				$this->new_width  = $this->int_w;
+				$this->new_height = $this->int_h;
 				return;
+			}
 
 			$ratio = $this->new_width / $this->int_w;
 
@@ -578,6 +600,26 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			$this->s_x = $this->s_y = 0;
 			$this->crop_width = $this->new_width;
 			$this->crop_height = $this->new_height;
+		}
+
+		private function fit_in_box( $args ) {
+			list( $end_w, $end_h ) = explode( ',', $args );
+
+			$end_w = abs( intval( $end_w ) );
+			$end_h = abs( intval( $end_h ) );
+
+			// we do not allow both new width and height to be larger at the same time
+			if ( ! $end_w || ! $end_h || ( $this->int_w < $end_w && $this->int_h < $end_h ) ) {
+				// if the sizes are too big, then we serve the original size
+				$this->new_width  = $this->int_w;
+				$this->new_height = $this->int_h;
+			} else {
+				// take the smallest new value, since we are trying to fit into the 'box'
+				if ( $end_w < $end_h )
+					$this->setwidth( $end_w );
+				else
+					$this->setheight( $end_h );
+			}
 		}
 
 		private function crop( $args ) {
@@ -623,28 +665,39 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			if ( $ratio_orig == $ratio_end ) {
 				$this->setwidth( $end_w, true );
 			} else {
-				$aspect_ratio = $this->int_w / $this->int_h;
-				$this->new_width = min( $end_w, $this->int_w );
-				$this->new_height = min( $end_h, $this->int_h );
+					$aspect_ratio = $this->int_w / $this->int_h;
 
-				if ( ! $this->new_width )
-					$this->new_width = intval( $this->new_height * $aspect_ratio );
-				if ( ! $this->new_height )
-					$this->new_height = intval( $this->new_width / $aspect_ratio );
+					if ( $end_w > $this->int_w && $end_h > $this->int_h ) {
+						$this->new_width = max( $end_w, $this->int_w );
+						$this->new_height = max( $end_h, $this->int_h );
+						if ( ( $this->new_width > PHOTON__UPSCALE_MAX_PIXELS ) ||
+							( $this->new_height > PHOTON__UPSCALE_MAX_PIXELS ) ) {
+							$this->new_width  = $this->int_w;
+							$this->new_height = $this->int_h;
+						}
+					} else {
+						$this->new_width = min( $end_w, $this->int_w );
+						$this->new_height = min( $end_h, $this->int_h );
+					}
 
-				$size_ratio = max( $this->new_width / $this->int_w, $this->new_height / $this->int_h );
-				$this->crop_width = min( ceil( $this->new_width / $size_ratio ), $this->int_w );
-				$this->crop_height = min( ceil( $this->new_height / $size_ratio ), $this->int_h );
+					if ( ! $this->new_width )
+						$this->new_width = intval( $this->new_height * $aspect_ratio );
+					if ( ! $this->new_height )
+						$this->new_height = intval( $this->new_width / $aspect_ratio );
 
-				$this->s_x = round( ( $this->int_w - $this->crop_width ) / 2 );
-				$this->s_y = round( ( $this->int_h - $this->crop_height ) / 2 );
-				$this->crop = true;
+					$size_ratio = max( $this->new_width / $this->int_w, $this->new_height / $this->int_h );
+					$this->crop_width = min( ceil( $this->new_width / $size_ratio ), $this->int_w );
+					$this->crop_height = min( ceil( $this->new_height / $size_ratio ), $this->int_h );
+
+					$this->s_x = round( ( $this->int_w - $this->crop_width ) / 2 );
+					$this->s_y = round( ( $this->int_h - $this->crop_height ) / 2 );
+					$this->crop = true;
 			}
 		}
 
 		public function process_image() {
-			// if the gif image is too small on one or both sides, do not process it
-			if ( 3 > $this->int_w || 3 > $this->int_h )
+			// if the gif image has an invalid size for either value, do not process it
+			if ( 1 > $this->int_w || 1 > $this->int_h )
 				return false;
 
 			// we need at least one action to perform otherwise we should just send the original
