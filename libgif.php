@@ -209,7 +209,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 							self::optimize ? $this->get_bytes( $sum + 1 ) : $buffer .= $this->get_bytes( $sum + 1 );
 							break;
 						case self::GIF_EXT_APPLICATION:
-							$sum = 14;
+							$sum = 2;
 							while ( 0x00 != ( $lc_i = ord( $this->gif[ $this->ptr + $sum ] ) ) ) {
 								$sum += $lc_i + 1;
 							}
@@ -229,6 +229,9 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 							}
 							self::optimize ? $this->get_bytes( $sum + 1 ) : $buffer .= $this->get_bytes( $sum + 1 );
 							break;
+						default:
+							// invalid start header found, increment by 1 byte to 'sync' to the next header
+							$this->get_bytes( 1 );
 					}
 				}
 
@@ -602,7 +605,46 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			$this->crop_height = $this->new_height;
 		}
 
+		private function zoom( $zoom_val ) {
+			if ( strlen( $zoom_val ) ) {
+				$zoom = floatval( $zoom_val );
+				// clamp to 1-10
+				$zoom = max( 1, $zoom );
+				$zoom = min( 10, $zoom );
+				if ( $zoom < 2 ) {
+					// round UP to the nearest half
+					$zoom = ceil( $zoom * 2 ) / 2;
+				} else {
+					// round UP to the nearest integer
+					$zoom = ceil( $zoom );
+				}
+			} else {
+				$zoom = 0;
+			}
+
+			if ( $zoom > 1 ) {
+				$this->new_width = round( $this->new_width * $zoom );
+				$this->new_height = round( $this->new_height * $zoom );
+
+				// check that if we have made it bigger than the images original size, that we remain with bounds
+				if ( $this->new_width >= $this->int_w && $this->new_height >= $this->int_h ) {
+					if ( ( $this->new_width > PHOTON__UPSCALE_MAX_PIXELS ) ||
+						( $this->new_height > PHOTON__UPSCALE_MAX_PIXELS ) ) {
+						$this->new_width  = $this->int_w;
+						$this->new_height = $this->int_h;
+					}
+				}
+			}
+		}
+
 		private function fit_in_box( $args ) {
+			// if the args are malformed, default to the original size
+			if ( false === strpos( $args, ',' ) ) {
+				$this->new_width  = $this->int_w;
+				$this->new_height = $this->int_h;
+				return;
+			}
+
 			list( $end_w, $end_h ) = explode( ',', $args );
 
 			$end_w = abs( intval( $end_w ) );
@@ -610,20 +652,48 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 
 			// we do not allow both new width and height to be larger at the same time
 			if ( ! $end_w || ! $end_h || ( $this->int_w < $end_w && $this->int_h < $end_h ) ) {
-				// if the sizes are too big, then we serve the original size
 				$this->new_width  = $this->int_w;
 				$this->new_height = $this->int_h;
 			} else {
-				// take the smallest new value, since we are trying to fit into the 'box'
-				if ( $end_w < $end_h )
-					$this->setwidth( $end_w );
-				else
-					$this->setheight( $end_h );
+				$original_aspect = $this->int_w / $this->int_h;
+				$new_aspect = $end_w / $end_h;
+
+				if ( $original_aspect >= $new_aspect ) {
+					$this->new_height = $end_h;
+					$this->new_width = $this->int_w / ( $this->int_h / $end_h );
+					// check we haven't overstepped the width
+					if ( $this->new_width > $end_w ) {
+						$this->new_height = $this->new_height - round( ( $this->new_width - $end_w ) * $new_aspect );
+						$this->new_width = $end_w;
+					}
+				} else {
+					$this->new_width = $end_w;
+					$this->new_height = $this->int_h / ( $this->int_w / $end_w );
+					// check we haven't overstepped the height
+					if ( $this->new_height > $end_h ) {
+						$this->new_width = $this->new_width - round( ( $this->new_height - $end_h ) * $new_aspect );
+						$this->new_height = $end_h;
+					}
+				}
 			}
 		}
 
 		private function crop( $args ) {
+			// if the args are malformed, default to the original size
+			if ( false === strpos( $args, ',' ) ) {
+				$this->new_width  = $this->int_w;
+				$this->new_height = $this->int_h;
+				return;
+			}
+
 			$args = explode( ',', $args );
+
+			// if we don't have the correct number of args, default
+			if ( count( $args ) != 4 ) {
+				$this->new_width  = $this->int_w;
+				$this->new_height = $this->int_h;
+				return;
+			}
 
 			if ( 'px' == substr( $args[2], -2 ) )
 				$this->crop_width = max( 0, min( $this->int_w, intval( $args[2] ) ) );
@@ -651,12 +721,23 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 		}
 
 		private function resize_and_crop( $args ) {
+			// if the args are malformed, default to the original size
+			if ( false === strpos( $args, ',' ) ) {
+				$this->new_width  = $this->int_w;
+				$this->new_height = $this->int_h;
+				return;
+			}
+
 			list( $end_w, $end_h ) = explode( ',', $args );
 			$end_w = (int) $end_w;
 			$end_h = (int) $end_h;
 
-			if ( 0 == $end_w || 0 == $end_h )
+			// if the sizes are invalid, default to the original size
+			if ( 0 == $end_w || 0 == $end_h ) {
+				$this->new_width  = $this->int_w;
+				$this->new_height = $this->int_h;
 				return;
+			}
 
 			$ratio_orig = $this->int_w / $this->int_h;
 			$ratio_end = $end_w / $end_h;
@@ -667,7 +748,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			} else {
 					$aspect_ratio = $this->int_w / $this->int_h;
 
-					if ( $end_w > $this->int_w && $end_h > $this->int_h ) {
+					if ( $end_w >= $this->int_w && $end_h >= $this->int_h ) {
 						$this->new_width = max( $end_w, $this->int_w );
 						$this->new_height = max( $end_h, $this->int_h );
 						if ( ( $this->new_width > PHOTON__UPSCALE_MAX_PIXELS ) ||
@@ -676,8 +757,8 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 							$this->new_height = $this->int_h;
 						}
 					} else {
-						$this->new_width = min( $end_w, $this->int_w );
-						$this->new_height = min( $end_h, $this->int_h );
+						$this->new_width = $end_w;
+						$this->new_height = $end_h;
 					}
 
 					if ( ! $this->new_width )
@@ -704,12 +785,23 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			if ( 0 == count( $this->pre_process_actions ) )
 				return false;
 
+			$cropped = false;
 			// do the pre-processing functions
-			foreach ( $this->pre_process_actions as $action )
+			foreach ( $this->pre_process_actions as $action ) {
 				$this->$action[ 'func_name' ]( $action[ 'params' ] );
+				if ( 'crop' == $action[ 'func_name' ] )
+					$cropped = true;
+			}
+
+			// zoom functionality is not supported with the 'crop' function
+			if ( ! $cropped ) {
+				// check if zoom needs to be run, and run if neccessary
+				if ( isset( $_GET['zoom'] ) )
+					$this->zoom( $_GET['zoom'] );
+			}
 
 			// we fail if the image size is too small
-			if ( 3 > $this->new_width || 3 > $this->new_height )
+			if ( 1 > $this->new_width || 1 > $this->new_height )
 				return false;
 
 			if ( $this->crop ) {
