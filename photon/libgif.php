@@ -121,19 +121,22 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 							$this->au = 1;
 						break;
 					case self::GIF_EXT_APPLICATION:
-						$sum = 14;
+						$sum = 2;
 						while ( 0x00 != ( $lc_i = ord( $this->gif[ $this->ptr + $sum ] ) ) ) {
 							$sum += $lc_i + 1;
 						}
 						$buffer_add .= $this->get_bytes( $sum + 1 );
 						break;
 					case self::GIF_EXT_PLAINTEXT:
-						$sum = 15;
+						$sum = 2;
 						while ( 0x00 != ( $lc_i = ord( $this->gif[ $this->ptr + $sum ] ) ) ) {
 							$sum += $lc_i + 1;
 						}
 						self::optimize ? $this->get_bytes( $sum + 1 ) : $buffer_add .= $this->get_bytes($sum + 1);
 						break;
+					default:
+						// invalid start header found, increment by 1 byte to 'sync' to the next header
+						$this->get_bytes( 1 );
 				}
 			}
 			$this->g_mode = $buffer_add;
@@ -160,19 +163,22 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 							self::optimize ? $this->get_bytes( $sum + 1 ) : $buff .= $this->get_bytes( $sum + 1 );
 							break;
 						case self::GIF_EXT_APPLICATION:
-							$sum = 14;
+							$sum = 2;
 							while ( 0x00 != ( $lc_i = ord( $this->gif[ $this->ptr + $sum ] ) ) ) {
 								$sum += $lc_i + 1;
 							}
 							$buff .= $this->get_bytes( $sum + 1 );
 							break;
 						case self::GIF_EXT_PLAINTEXT:
-							$sum = 15;
+							$sum = 2;
 							while ( 0x00 != ( $lc_i = ord( $this->gif[ $this->ptr + $sum ] ) ) ) {
 								$sum += $lc_i + 1;
 							}
 							self::optimize ? $this->get_bytes( $sum + 1 ) : $buff .= $this->get_bytes( $sum + 1 );
 							break;
+						default:
+							// invalid start header found, increment by 1 byte to 'sync' to the next header
+							$this->get_bytes( 1 );
 					}
 					if ( $this->ptr >= $this->max_len )
 						httpdie( '400 Bad Request', "unable to process the image header" );
@@ -223,7 +229,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 							}
 							break;
 						case self::GIF_EXT_PLAINTEXT:
-							$sum = 15;
+							$sum = 2;
 							while ( 0x00 != ( $lc_i = ord( $this->gif[ $this->ptr + $sum ] ) ) ) {
 								$sum += $lc_i + 1;
 							}
@@ -516,10 +522,11 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			for ( $i = 13; $i < $offset; $i++ )
 				$palet .= $str_img[$i];
 
+			$str_max_len = strlen( $str_img );
 			if ( $this->frame_array[$index]->transp ) {
 				while ( self::GIF_EXT_GRAPHIC_CONTROL != ord( $str_img[ $offset + $m_off ] ) ) {
 					$m_off++;
-					if ( ( $offset + $m_off ) > ( $this->max_len - 4 ) )
+					if ( ( $offset + $m_off + 4 ) > $str_max_len )
 						httpdie( '400 Bad Request', "unable to reprocess the image frame" );
 				}
 				$str_img[ $offset + $m_off + 2 ] = $this->gn_fld[ $index ];
@@ -530,7 +537,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			while ( self::GIF_BLOCK_IMAGE_DESCRIPTOR != ord( $str_img[ $offset ] ) ) {
 				$offset++;
 				$i_hd++;
-				if ( $offset > ( $this->max_len - 9 ) )
+				if ( ( $offset + 9 ) > $str_max_len )
 					httpdie( '400 Bad Request', "unable to reprocess the image frame" );
 			}
 
