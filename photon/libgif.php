@@ -418,7 +418,6 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 		}
 
 		private function process_frame( $img_data, $index ) {
-
 			// if a frame is transparent and does not fill the entire image size, we need to extend the frame
 			// to be full size to overcome resizing ratio differences between different size frames
 			if ( $this->frame_array[ $index ]->transp &&
@@ -789,8 +788,12 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 				return false;
 
 			// we need at least one action to perform otherwise we should just send the original
-			if ( 0 == count( $this->pre_process_actions ) )
-				return false;
+			if ( 0 == count( $this->pre_process_actions ) ) {
+				$this->pre_process_actions[] = Array (
+												'func_name' => 'setWidth',
+												'params'    => $this->int_w,
+												);
+			}
 
 			$cropped = false;
 			// do the pre-processing functions
