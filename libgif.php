@@ -248,21 +248,21 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 				$dimms[] = $this->get_num(5, 2);
 				$dimms[] = $this->get_num(7, 2);
 
-				$head = $this->get_bytes(10);
+				$head = $this->get_bytes( 10 );
 
 				if ( ( ( $dimms[0] + $dimms[2] ) - $this->int_w ) > 0 ) {
 					$head[1]  = "\x00";
 					$head[2]  = "\x00";
-					$head[5]  = $this->int_raw( $this->int_w );
-					$head[6]  = "\x00";
+					$head[5]  = chr( $this->int_w & 255 );
+					$head[6]  = chr( ( $this->int_w & 0xFF00 ) >> 8 );
 					$dimms[0] = 0;
 					$dimms[2] = $this->int_w;
 				}
-				if ( ( ( $dimms[1] + $dimms[3] ) - $this->int_h) > 0 ) {
+				if ( ( ( $dimms[1] + $dimms[3] ) - $this->int_h ) > 0 ) {
 					$head[3]  = "\x00";
 					$head[4]  = "\x00";
-					$head[7]  = $this->int_raw( $this->int_h );
-					$head[8]  = "\x00";
+					$head[7]  = chr( $this->int_h & 255 );
+					$head[8]  = chr( ( $this->int_h & 0xFF00 ) >> 8 );
 					$dimms[1] = 0;
 					$dimms[3] = $this->int_h;
 				}
@@ -383,14 +383,17 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			if ( $this->frame_array[ $index ]->transp ) {
 				$in_trans = @imagecolortransparent( $str_img);
 
-				if ( ( $in_trans >= 0 ) && ( $in_trans < @imagecolorstotal( $img_s ) ) )
+				if ( ( $in_trans >= 0 ) && ( $in_trans < @imagecolorstotal( $str_img ) ) )
 					$tr_clr = @imagecolorsforindex( $str_img, $in_trans );
 
-				if ( 1 == $this->frame_count )
-					$n_trans = @imagecolorallocatealpha($img_s, 255, 255, 255, 127);
-				else
-					$n_trans = @imagecolorallocate( $img_s, $tr_clr['red'], $tr_clr['green'], $tr_clr['blue'] );
-
+				if ( 1 == $this->frame_count || ! isset( $tr_clr )  ) {
+					$n_trans = @imagecolorallocatealpha( $img_s, 255, 255, 255, 127 );
+				} else {
+					if ( array_key_exists( 'alpha' , $tr_clr ) )
+						$n_trans = @imagecolorallocatealpha( $img_s, $tr_clr['red'], $tr_clr['green'], $tr_clr['blue'], $tr_clr['alpha'] );
+					else
+						$n_trans = @imagecolorallocate( $img_s, $tr_clr['red'], $tr_clr['green'], $tr_clr['blue'] );
+				}
 				@imagecolortransparent( $img_s, $n_trans );
 				@imagefill( $img_s, 0, 0, $n_trans );
 			}
@@ -481,16 +484,19 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 				$img_s = @imagecreate( $n_width, $n_height );
 
 			if ( $this->frame_array[ $index ]->transp ) {
-				$in_trans = @imagecolortransparent( $str_img);
+				$in_trans = @imagecolortransparent( $str_img );
 
-				if ( ( $in_trans >= 0 ) && ( $in_trans < @imagecolorstotal( $img_s ) ) )
+				if ( ( $in_trans >= 0 ) && ( $in_trans < @imagecolorstotal( $str_img ) ) )
 					$tr_clr = @imagecolorsforindex( $str_img, $in_trans );
 
-				if ( 1 == $this->frame_count )
-					$n_trans = @imagecolorallocatealpha($img_s, 255, 255, 255, 127);
-				else
-					$n_trans = @imagecolorallocate( $img_s, $tr_clr['red'], $tr_clr['green'], $tr_clr['blue'] );
-
+				if ( 1 == $this->frame_count || ! isset( $tr_clr ) ) {
+					$n_trans = @imagecolorallocatealpha( $img_s, 255, 255, 255, 127 );
+				} else {
+					if ( array_key_exists( 'alpha' , $tr_clr ) )
+						$n_trans = @imagecolorallocatealpha( $img_s, $tr_clr['red'], $tr_clr['green'], $tr_clr['blue'], $tr_clr['alpha'] );
+					else
+						$n_trans = @imagecolorallocate( $img_s, $tr_clr['red'], $tr_clr['green'], $tr_clr['blue'] );
+				}
 				@imagecolortransparent( $img_s, $n_trans );
 				@imagefill( $img_s, 0, 0, $n_trans );
 			}
