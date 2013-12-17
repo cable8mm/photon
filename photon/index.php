@@ -36,6 +36,10 @@ $allowed_types = apply_filters( 'allowed_types', array(
 	'png',
 ) );
 
+$disallowed_file_headers = apply_filters( 'disallowed_headers', array(
+	'8BPS',
+) );
+
 // Expects a trailing slash
 $tmpdir = apply_filters( 'tmpdir', '/tmp/' );
 $remote_image_max_size = apply_filters( 'remote_image_max_size', 55 * 1024 * 1024 );
@@ -654,7 +658,7 @@ parse_str( ( empty( $parsed['query'] ) ? '' : $parsed['query'] ),  $_GET  );
 $ext = strtolower( pathinfo( $parsed['path'], PATHINFO_EXTENSION ) );
 
 if ( ! in_array( $ext, $allowed_types ) && !( $origin_domain_exception & PHOTON__ALLOW_ANY_EXTENSION ) )
-	httpdie( '400 Bad Request', 'The type of image you are trying to process is not allowed' );
+	httpdie( '400 Bad Request', 'Error 0001. The type of image you are trying to process is not allowed.' );
 
 $url = $scheme . substr( $parsed['path'], 1 );
 $url = preg_replace( '/#.*$/', '', $url );
@@ -678,6 +682,11 @@ $fetched = fetch_raw_data( $url );
 if ( ! $fetched || empty( $raw_data ) )
 	httpdie( '504 Gateway Timeout', 'We cannot complete this request, remote data could not be fetched' );
 
+foreach ( $disallowed_file_headers as $file_header ) {
+	if ( substr( $raw_data, 0, strlen( $file_header ) ) == $file_header )
+		httpdie( '400 Bad Request', 'Error 0002. The type of image you are trying to process is not allowed.' );
+}
+
 if ( 'GIF' === substr( $raw_data, 0, 3 ) ) {
 	require dirname( __FILE__ ) . '/libgif.php';
 	$image = new Gif_Image( $raw_data );
@@ -693,7 +702,7 @@ if ( 'GIF' === substr( $raw_data, 0, 3 ) ) {
 }
 
 if ( ! in_array( $type, $allowed_types ) )
-	httpdie( '400 Bad Request', 'The type of image you are trying to process is not allowed' );
+	httpdie( '400 Bad Request', 'Error 0003. The type of image you are trying to process is not allowed.' );
 
 if ( $type == 'jpeg' )
 	$quality = get_jpeg_quality( $raw_data, $raw_data_size );
