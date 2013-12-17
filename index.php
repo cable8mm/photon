@@ -36,7 +36,7 @@ $allowed_types = apply_filters( 'allowed_types', array(
 	'png',
 ) );
 
-$disallowed_file_headers = apply_filters( 'disallowed_headers', array(
+$disallowed_file_headers = apply_filters( 'disallowed_file_headers', array(
 	'8BPS',
 ) );
 
@@ -683,7 +683,7 @@ if ( ! $fetched || empty( $raw_data ) )
 	httpdie( '504 Gateway Timeout', 'We cannot complete this request, remote data could not be fetched' );
 
 foreach ( $disallowed_file_headers as $file_header ) {
-	if ( substr( $raw_data, 0, strlen( $file_header ) ) == $file_header )
+	if ( 0 === strpos( $raw_data, $file_header ) )
 		httpdie( '400 Bad Request', 'Error 0002. The type of image you are trying to process is not allowed.' );
 }
 
