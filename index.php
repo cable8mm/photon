@@ -599,7 +599,6 @@ function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 2 ) {
 	$ch = curl_init( $url );
 	curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, $connect_timeout );
 	curl_setopt( $ch, CURLOPT_TIMEOUT, $timeout );
-	curl_setopt( $ch, CURLOPT_SSLVERSION, 3 );
 	curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );
 	curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
 	curl_setopt( $ch, CURLOPT_MAXREDIRS, 3 );
