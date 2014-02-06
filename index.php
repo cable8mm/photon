@@ -756,7 +756,7 @@ try {
 			$tmp = tempnam( $tmpdir, 'JPEGOPTIM-' );
 			$image->write( $tmp );
 			$og = filesize( $tmp );
-			exec( JPEGOPTIM . " -p $tmp" );
+			exec( JPEGOPTIM . " --all-progressive -p $tmp" );
 			clearstatcache();
 			$save = $og - filesize( $tmp );
 			do_action( 'bump_stats', 'jpg_bytes_saved', $save );
