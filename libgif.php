@@ -672,19 +672,19 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 
 				if ( $original_aspect >= $new_aspect ) {
 					$this->new_height = $end_h;
-					$this->new_width = $this->int_w / ( $this->int_h / $end_h );
+					$this->new_width = round( $this->int_w / ( $this->int_h / $end_h ) );
 					// check we haven't overstepped the width
 					if ( $this->new_width > $end_w ) {
-						$this->new_height = $this->new_height - round( ( $this->new_width - $end_w ) * $new_aspect );
 						$this->new_width = $end_w;
+						$this->new_height = round( $this->int_h / ( $this->int_w / $end_w ) );
 					}
 				} else {
 					$this->new_width = $end_w;
-					$this->new_height = $this->int_h / ( $this->int_w / $end_w );
+					$this->new_height = round( $this->int_h / ( $this->int_w / $end_w ) );
 					// check we haven't overstepped the height
 					if ( $this->new_height > $end_h ) {
-						$this->new_width = $this->new_width - round( ( $this->new_height - $end_h ) * $new_aspect );
 						$this->new_height = $end_h;
+						$this->new_width = round( $this->int_w / ( $this->int_h / $end_h ) );
 					}
 				}
 			}
@@ -767,6 +767,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 							( $this->new_height > PHOTON__UPSCALE_MAX_PIXELS ) ) {
 							$this->new_width  = $this->int_w;
 							$this->new_height = $this->int_h;
+							return;
 						}
 					} else {
 						$this->new_width = $end_w;
