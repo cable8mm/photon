@@ -687,6 +687,12 @@ foreach ( $disallowed_file_headers as $file_header ) {
 }
 
 if ( 'GIF' === substr( $raw_data, 0, 3 ) ) {
+	if ( 0 === strlen( $_SERVER['QUERY_STRING'] ) ) {
+		do_action( 'bump_stats', 'image_gif' );
+		photon_cache_headers();
+		header( 'Content-Type: image/gif' );
+		die( $raw_data );
+	}
 	require dirname( __FILE__ ) . '/libgif.php';
 	$image = new Gif_Image( $raw_data );
 	$type = 'gif';
