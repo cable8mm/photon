@@ -54,7 +54,7 @@ $origin_domain_exceptions = apply_filters( 'origin_domain_exceptions', array() )
 
 // You can override this by defining it in config.php
 if ( ! defined( 'PHOTON__UPSCALE_MAX_PIXELS' ) )
-	define( 'PHOTON__UPSCALE_MAX_PIXELS', 1000 );
+	define( 'PHOTON__UPSCALE_MAX_PIXELS', 2000 );
 
 require dirname( __FILE__ ) . '/libjpeg.php';
 
@@ -199,7 +199,7 @@ function setheight( &$image, $args, $upscale = false ) {
 	// New height is greater than original image, but we don't have permission to upscale
 	if ( $new_height > $h && ! $upscale )
 		return;
-	// Sane limit when upscaling, defaults to 1000
+	// Sane limit when upscaling
 	if ( $new_height > $h && $upscale && $new_height > PHOTON__UPSCALE_MAX_PIXELS )
 		return;
 
@@ -236,7 +236,7 @@ function setwidth( &$image, $args, $upscale = false ) {
 	// New height is greater than original image, but we don't have permission to upscale
 	if ( $new_width > $w && ! $upscale )
 		return;
-	// Sane limit when upscaling, defaults to 1000
+	// Sane limit when upscaling
 	if ( $new_width > $w && $upscale && $new_width > PHOTON__UPSCALE_MAX_PIXELS )
 		return;
 
