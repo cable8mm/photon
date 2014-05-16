@@ -298,6 +298,12 @@ function resize_and_crop( &$image, $args ) {
 	if ( 0 == $end_w || 0 == $end_h )
 		return;
 
+	if ( $end_w > $w && $end_w > PHOTON__UPSCALE_MAX_PIXELS )
+		return;
+
+	if ( $end_h > $h && $end_h > PHOTON__UPSCALE_MAX_PIXELS )
+		return;
+
 	$ratio_orig = $w / $h;
 	$ratio_end = $end_w / $end_h;
 
