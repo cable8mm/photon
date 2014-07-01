@@ -1,7 +1,6 @@
 <?php
 
-define( 'PHOTON__ALLOW_ANY_EXTENSION', 1 );
-define( 'PHOTON__ALLOW_QUERY_STRINGS', 2 );
+define( 'PHOTON__ALLOW_QUERY_STRINGS', 1 );
 
 require dirname( __FILE__ ) . '/plugin.php';
 if ( file_exists( dirname( __FILE__ ) . '/../config.php' ) )
@@ -47,7 +46,6 @@ $remote_image_max_size = apply_filters( 'remote_image_max_size', 55 * 1024 * 102
 /* Array of domains exceptions
  * Keys are domain name
  * Values are bitmasks with the following options:
- * PHOTON__ALLOW_ANY_EXTENSION: Allow any extension (including none) in the path of the URL
  * PHOTON__ALLOW_QUERY_STRINGS: Append the string found in the 'q' query string parameter as the query string of the remote URL
  */
 $origin_domain_exceptions = apply_filters( 'origin_domain_exceptions', array() );
@@ -661,9 +659,6 @@ $scheme = 'http' . ( array_key_exists( 'ssl', $_GET ) ? 's' : '' ) . '://';
 parse_str( ( empty( $parsed['query'] ) ? '' : $parsed['query'] ),  $_GET  );
 
 $ext = strtolower( pathinfo( $parsed['path'], PATHINFO_EXTENSION ) );
-
-if ( ! in_array( $ext, $allowed_types ) && !( $origin_domain_exception & PHOTON__ALLOW_ANY_EXTENSION ) )
-	httpdie( '400 Bad Request', 'Error 0001. The type of image you are trying to process is not allowed.' );
 
 $url = $scheme . substr( $parsed['path'], 1 );
 $url = preg_replace( '/#.*$/', '', $url );
