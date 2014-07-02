@@ -830,8 +830,10 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			}
 
 			$this->image_data = '';
-			for ( $i = 0; $i < $this->frame_count; $i++ )
+			for ( $i = 0; $i < $this->frame_count; $i++ ) {
 				$this->image_data .= $this->repack_frame( $this->process_frame( $this->get_frame_image( $i ), $i ), $i );
+				$this->frame_array[ $i ] = null;
+			}
 
 			return true;
 		}
