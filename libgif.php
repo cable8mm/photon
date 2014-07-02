@@ -848,6 +848,8 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			$gm[8] = $i_bytes[0];
 			$gm[9] = $i_bytes[1];
 
+			$this->image_data = $gm . $this->g_mod . $this->image_data;
+
 			$con = '';
 			if ( strlen( $this->g_mode ) )
 				$con = $this->g_mode . "\x3B";
@@ -857,7 +859,9 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			if ( ! $this->au )
 				$con = "\x21\xFE\x0Eautomattic_inc\x00" . $con;
 
-			return $gm . $this->g_mod . $this->image_data . ( iconv_strlen( $con ) >= 19 ? $con : "\x21" );
+			$this->image_data .= ( iconv_strlen( $con ) >= 19 ? $con : "\x21" );
+
+			return $this->image_data;
 		}
 
 		public function add_function( $function_name, $arguments ) {
