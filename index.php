@@ -644,10 +644,12 @@ function do_a_filter( $function_name, $arguments ) {
 	}
 }
 
-function photon_cache_headers( $expires=63115200 ) {
+function photon_cache_headers( $image_url, $content_type = 'image/jpeg', $expires = 63115200 ) {
 	header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + $expires ) . ' GMT' );
 	header( 'Cache-Control: public, max-age='.$expires );
 	header( 'X-Content-Type-Options: nosniff' );
+	header( 'Link: <' . $image_url . '>; rel="canonical"' );
+	header( 'Content-Type: ' . $content_type );
 }
 
 $parsed = parse_url( $_SERVER['REQUEST_URI'] );
@@ -693,8 +695,7 @@ if ( 'GIF' === substr( $raw_data, 0, 3 ) ) {
 	$type = 'gif';
 	if ( 0 === strlen( $_SERVER['QUERY_STRING'] ) ) {
 		do_action( 'bump_stats', 'image_gif' );
-		photon_cache_headers();
-		header( 'Content-Type: image/gif' );
+		photon_cache_headers( $url, 'image/gif' );
 		die( $raw_data );
 	}
 } else {
@@ -730,7 +731,6 @@ try {
 	switch ( $type ) {
 		case 'png':
 			do_action( 'bump_stats', 'image_png' );
-			header( 'Content-Type: image/png' );
 			$image->setcompressionquality( $quality );
 			$tmp = tempnam( $tmpdir, 'OPTIPNG-' );
 			$image->write( $tmp );
@@ -740,7 +740,7 @@ try {
 			$save = $og - filesize( $tmp );
 			do_action( 'bump_stats', 'png_bytes_saved', $save );
 			$fp = fopen( $tmp, 'r' );
-			photon_cache_headers();
+			photon_cache_headers( $url, 'image/png' );
 			header( 'Content-Length: ' . filesize( $tmp ) );
 			header( 'X-Bytes-Saved: ' . $save );
 			unlink( $tmp );
@@ -749,8 +749,7 @@ try {
 		case 'gif':
 			do_action( 'bump_stats', 'image_gif' );
 			if ( $image->process_image() ) {
-				photon_cache_headers();
-				header( 'Content-Type: image/gif' );
+				photon_cache_headers( $url, 'image/gif' );
 				echo $image->get_imageblob();
 			} else {
 				httpdie( '400 Bad Request', "Sorry, the parameters you provided were not valid" );
@@ -758,7 +757,6 @@ try {
 			break;
 		default:
 			do_action( 'bump_stats', 'image_jpeg' );
-			header( 'Content-Type: image/jpeg' );
 			$image->setcompressionquality( $quality );
 			$tmp = tempnam( $tmpdir, 'JPEGOPTIM-' );
 			$image->write( $tmp );
@@ -768,7 +766,7 @@ try {
 			$save = $og - filesize( $tmp );
 			do_action( 'bump_stats', 'jpg_bytes_saved', $save );
 			$fp = fopen( $tmp, 'r' );
-			photon_cache_headers();
+			photon_cache_headers( $url );
 			header( 'Content-Length: ' . filesize( $tmp ) );
 			header( 'X-Bytes-Saved: ' . $save );
 			unlink( $tmp );
