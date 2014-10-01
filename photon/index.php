@@ -645,6 +645,7 @@ function do_a_filter( $function_name, $arguments ) {
 }
 
 function photon_cache_headers( $image_url, $content_type = 'image/jpeg', $expires = 63115200 ) {
+	header( 'Last-Modified: ' . gmdate( 'D, d M Y H:i:s', time() ) . ' GMT' );
 	header( 'Expires: ' . gmdate( 'D, d M Y H:i:s', time() + $expires ) . ' GMT' );
 	header( 'Cache-Control: public, max-age='.$expires );
 	header( 'X-Content-Type-Options: nosniff' );
