@@ -275,3 +275,22 @@ function get_jpeg_quality( &$buff, $buff_len = null ) {
 	return 100; // go with a safe value
 }
 
+function jpegoptim( $file ) {
+	$cmd = JPEGOPTIM . ' -T0.0 --all-progressive';
+	if ( isset( $_GET['strip'] ) ) {
+		switch ( $_GET['strip'] ) {
+			case 'all':
+				$cmd .= ' --strip-all';
+				break;
+			case 'info':
+				$cmd .= ' --strip-com --strip-exif --strip-iptc';
+				break;
+			case 'color':
+				$cmd .= ' --strip-icc';
+				break;
+		}
+	}
+	$cmd .= " -p $file";
+	exec( $cmd );
+}
+

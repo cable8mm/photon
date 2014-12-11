@@ -718,6 +718,9 @@ else
 	$quality = 90;
 unset( $raw_data );
 
+if ( isset( $_GET['quality'] ) )
+	$quality = min( max( intval( $_GET['quality'] ), 20 ), $quality );
+
 try {
 	// Run through all uri supplied functions which are valid and allowed
 	foreach( $_GET as $function_name => $arguments ) {
@@ -762,7 +765,7 @@ try {
 			$tmp = tempnam( $tmpdir, 'JPEGOPTIM-' );
 			$image->write( $tmp );
 			$og = filesize( $tmp );
-			exec( JPEGOPTIM . " --all-progressive -p $tmp" );
+			jpegoptim( $tmp );
 			clearstatcache();
 			$save = $og - filesize( $tmp );
 			do_action( 'bump_stats', 'jpg_bytes_saved', $save );
