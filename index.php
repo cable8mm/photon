@@ -12,6 +12,8 @@ else if ( file_exists( dirname( __FILE__ ) . '/config.php' ) )
 $allowed_functions = apply_filters( 'allowed_functions', array(
 //	'q'           => RESERVED
 //	'zoom'        => global resolution multiplier (argument filter)
+//	'quality'     => sets the quality of JPEG images during processing
+//	'strip        => strips JPEG images of exif, icc or all "extra" data (params: info,color,all)
 	'h'           => 'setheight',       // done
 	'w'           => 'setwidth',        // done
 	'crop'        => 'crop',            // done
