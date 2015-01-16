@@ -1,6 +1,6 @@
 <?php
 
-function get_jpeg_header_data( &$buff, $buff_len, $want=null ) { 
+function get_jpeg_header_data( &$buff, $buff_len, $want=null ) {
 	$data = buffer_read( $buff, $buff_len, 2, true ); // Read the first two characters
 	// Check that the first two characters are 0xFF 0xDA  (SOI - Start of image)
 	if ( $data != "\xFF\xD8" ) {
@@ -13,13 +13,13 @@ function get_jpeg_header_data( &$buff, $buff_len, $want=null ) {
 		// NO FF found - close file and return - JPEG is probably corrupted
 		return false;
 	}
-	// Cycle through the file until, one of: 
+	// Cycle through the file until, one of:
 	//   1) an EOI (End of image) marker is hit,
 	//   2) we have hit the compressed image data (no more headers are allowed after data)
 	//   3) or end of file is hit
 	$headerdata = array();
 	$hit_compressed_image_data = FALSE;
-	while ( ( $data{1} != "\xD9" ) && ( !$hit_compressed_image_data) && ( $data != '' ) ) { 
+	while ( ( $data{1} != "\xD9" ) && ( !$hit_compressed_image_data) && ( $data != '' ) ) {
 		// Found a segment to look at.
 		// Check that the segment marker is not a Restart marker - restart markers don't have size or data after them
 		if (  ( ord($data{1}) < 0xD0 ) || ( ord($data{1}) > 0xD7 ) ) {
@@ -32,11 +32,11 @@ function get_jpeg_header_data( &$buff, $buff_len, $want=null ) {
 			$segdata = buffer_read( $buff, $buff_len, $decodedsize['size'] - 2 );
 			// Store the segment information in the output array
 			if ( !$want || $want == ord($data{1}) ) {
-				$headerdata[] = (object)array(  
+				$headerdata[] = (object)array(
 					"SegType" => ord($data{1}),
 					"SegName" => $GLOBALS[ "JPEG_Segment_Names" ][ ord($data{1}) ],
 					"SegDesc" => $GLOBALS[ "JPEG_Segment_Descriptions" ][ ord($data{1}) ],
-					"SegData" => $segdata 
+					"SegData" => $segdata
 				);
 			}
 		}
@@ -172,7 +172,7 @@ $GLOBALS[ "JPEG_Segment_Descriptions" ] = array(
  * and how it handles identify -verbose $filename to present you with a Quality
  * number.  This number should be considered approximate.  It's essentially
  * based upon the numbers used to perform compression on the original image
- * data... 
+ * data...
  *
  * See: http://www.obrador.com/essentialjpeg/headerinfo.htm
  * See: http://www.impulseadventure.com/photo/jpeg-quantization.html
@@ -192,7 +192,7 @@ function get_jpeg_quality( &$buff, $buff_len = null ) {
 				  143,  139,  132,  128,  125,  119,  115,  108,  104,   99,
 				   94,   90,   84,   79,   74,   70,   64,   59,   55,   49,
 				   45,   40,   34,   30,   25,   20,   15,   11,    6,    4,
-					0	
+					0
 			), // hash
 			'sums' => array (
 				 32640, 32635, 32266, 31495, 30665, 29804, 29146, 28599, 28104,
@@ -239,18 +239,18 @@ function get_jpeg_quality( &$buff, $buff_len = null ) {
 			), // sums
 		), // single
 	); // tables
-	
+
 	if ( ! isset( $buff_len ) )
 		$buff_len = strlen( $buff );
 
 	$headers = get_jpeg_header_data( $buff, $buff_len, 0xDB );
 	if ( !is_array( $headers ) || !count( $headers ) )
 		return 100;
-	$header = $headers[0];	
+	$header = $headers[0];
 	$quality = 0;
 	if ( strlen($header->SegData) > 128 ) {
 		$entry = array( 0 => array(), 1 => array() );
-		foreach ( str_split( substr( $header->SegData, 1, 64) ) as $chr ) 
+		foreach ( str_split( substr( $header->SegData, 1, 64) ) as $chr )
 			$entry[0][] = ord($chr);
 		foreach ( str_split( substr( $header->SegData, -64) ) as $chr )
 			$entry[1][] = ord($chr);
