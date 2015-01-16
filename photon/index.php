@@ -766,8 +766,13 @@ try {
 			$image->setcompressionquality( $quality );
 			$tmp = tempnam( $tmpdir, 'JPEGOPTIM-' );
 			$image->write( $tmp );
+			$strip = false;
+			if ( isset( $_GET['strip'] ) ) {
+				$strip = $_GET['strip'];
+				exifrotate( $tmp, $image, $strip );
+			}
 			$og = filesize( $tmp );
-			jpegoptim( $tmp );
+			jpegoptim( $tmp, $strip );
 			clearstatcache();
 			$save = $og - filesize( $tmp );
 			do_action( 'bump_stats', 'jpg_bytes_saved', $save );

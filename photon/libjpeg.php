@@ -275,20 +275,54 @@ function get_jpeg_quality( &$buff, $buff_len = null ) {
 	return 100; // go with a safe value
 }
 
-function jpegoptim( $file ) {
+function exifrotate( $file, $image, $strip ) {
+	// If jpegoptim is not available, we won't strip EXIF, so don't rotate
+	if ( false === JPEGOPTIM )
+		return;
+
+	if ( ! in_array( $strip, array( 'all', 'info' ) ) )
+		return;
+
+	$exif = @exif_read_data( $file );
+
+	if ( ! isset( $exif[ 'Orientation' ] ) )
+		return;
+
+	$degrees = 0;
+	switch( $exif[ 'Orientation' ] ) {
+		case 3:
+			$degrees = 180;
+			break;
+		case 6:
+			$degrees = 90;
+			break;
+		case 8:
+			$degrees = 270;
+			break;
+	}
+
+	if ( $degrees ) {
+		$image->rotateImage( 'black', $degrees );
+		// We need to write again, since we wrote it earlier to read EXIF data
+		$image->write( $file );
+	}
+}
+
+function jpegoptim( $file, $strip = false ) {
+	if ( false === JPEGOPTIM )
+		return;
+
 	$cmd = JPEGOPTIM . ' -T0.0 --all-progressive';
-	if ( isset( $_GET['strip'] ) ) {
-		switch ( $_GET['strip'] ) {
-			case 'all':
-				$cmd .= ' --strip-all';
-				break;
-			case 'info':
-				$cmd .= ' --strip-com --strip-exif --strip-iptc';
-				break;
-			case 'color':
-				$cmd .= ' --strip-icc';
-				break;
-		}
+	switch ( $strip ) {
+		case 'all':
+			$cmd .= ' --strip-all';
+			break;
+		case 'info':
+			$cmd .= ' --strip-com --strip-exif --strip-iptc';
+			break;
+		case 'color':
+			$cmd .= ' --strip-icc';
+			break;
 	}
 	$cmd .= " -p $file";
 	exec( $cmd );
