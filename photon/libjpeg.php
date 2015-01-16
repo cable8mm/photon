@@ -280,6 +280,9 @@ function exifrotate( $file, $image, $strip ) {
 	if ( false === JPEGOPTIM )
 		return;
 
+	if ( ! function_exists( 'exif_read_data' ) )
+		return;
+
 	if ( ! in_array( $strip, array( 'all', 'info' ) ) )
 		return;
 
