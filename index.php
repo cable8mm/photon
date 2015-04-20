@@ -1,6 +1,8 @@
 <?php
 
 define( 'PHOTON__ALLOW_QUERY_STRINGS', 1 );
+define( 'PHOTON__DEFAULT_MAX_QUALITY', 90 );
+define( 'PHOTON__PNG_MAX_QUALITY', 80 );
 
 require dirname( __FILE__ ) . '/plugin.php';
 if ( file_exists( dirname( __FILE__ ) . '/../config.php' ) )
@@ -63,6 +65,14 @@ if ( file_exists( '/usr/local/bin/optipng' ) )
 	define( 'OPTIPNG', '/usr/local/bin/optipng' );
 else
 	define( 'OPTIPNG', false );
+
+if ( file_exists( '/usr/local/bin/pngquant' ) )
+	define( 'PNGQUANT', '/usr/local/bin/pngquant' );
+else
+	define( 'PNGQUANT', false );
+
+// WEBP image functionality added, but currently disabled
+define( 'CWEBP', false );
 
 if ( file_exists( '/usr/local/bin/jpegoptim' ) )
 	define( 'JPEGOPTIM', '/usr/local/bin/jpegoptim' );
@@ -664,6 +674,39 @@ function serve_file( $url, $content_type, $filename, $bytes_saved ) {
 	fpassthru( $fp );
 }
 
+/**
+ * Compresses the PNG image using the best option available
+ *
+ * @param string $filename The file name of the temp image to compress
+ * @param int $quality The requested quality of the image
+ *
+ * @return string The content type of the final image (png or webp)
+ **/
+function compress_image_png( $filename, $quality ) {
+	$content_type = 'image/png';
+	if ( isset( $_GET['quality'] ) && 100 == intval( $_GET['quality'] ) ) {
+		if ( false !== OPTIPNG ) {
+			exec( OPTIPNG . " $filename" );
+		} else if ( false !== CWEBP && isset( $_SERVER['HTTP_ACCEPT'] ) &&
+				false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) ) {
+			$content_type = 'image/webp';
+			exec( CWEBP . " --lossless $filename -o $filename" );
+		}
+	} else {
+		if ( false !== CWEBP && isset( $_SERVER['HTTP_ACCEPT'] ) &&
+			false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) ) {
+			$content_type = 'image/webp';
+			exec( CWEBP . " -q $quality -alpha_q 100 $filename -o $filename" );
+		} else if ( false !== PNGQUANT ) {
+			exec( PNGQUANT . ' --speed 5 --quality=' . $quality . "-100 -f -o $filename $filename" );
+			if ( false !== OPTIPNG ) exec( OPTIPNG . " -o1 $filename" );
+		} else {
+			if ( false !== OPTIPNG ) exec( OPTIPNG . " $filename" );
+		}
+	}
+	return $content_type;
+}
+
 $parsed = parse_url( $_SERVER['REQUEST_URI'] );
 $exploded = explode( '/', $_SERVER['REQUEST_URI'] );
 $origin_domain = strtolower( $exploded[1] );
@@ -725,8 +768,10 @@ if ( ! in_array( $type, $allowed_types ) )
 
 if ( $type == 'jpeg' )
 	$quality = get_jpeg_quality( $raw_data, $raw_data_size );
+else if ( $type == 'png' )
+	$quality = PHOTON__PNG_MAX_QUALITY;
 else
-	$quality = 90;
+	$quality = PHOTON__DEFAULT_MAX_QUALITY;
 unset( $raw_data );
 
 if ( isset( $_GET['quality'] ) )
@@ -750,12 +795,11 @@ try {
 			$tmp = tempnam( $tmpdir, 'OPTIPNG-' );
 			$image->write( $tmp );
 			$og = filesize( $tmp );
-			exec( OPTIPNG . " $tmp" );
+			$content_type = compress_image_png( $tmp, $quality );
 			clearstatcache();
 			$save = $og - filesize( $tmp );
 			do_action( 'bump_stats', 'png_bytes_saved', $save );
-			$fp = fopen( $tmp, 'r' );
-			serve_file( $url, 'image/png', $tmp, $save );
+			serve_file( $url, $content_type, $tmp, $save );
 			break;
 		case 'gif':
 			do_action( 'bump_stats', 'image_gif' );
