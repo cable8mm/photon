@@ -655,6 +655,15 @@ function photon_cache_headers( $image_url, $content_type = 'image/jpeg', $expire
 	header( 'Content-Type: ' . $content_type );
 }
 
+function serve_file( $url, $content_type, $filename, $bytes_saved ) {
+	photon_cache_headers( $url, $content_type );
+	header( 'Content-Length: ' . filesize( $filename ) );
+	header( 'X-Bytes-Saved: ' . $bytes_saved );
+	$fp = fopen( $filename, 'r' );
+	unlink( $filename );
+	fpassthru( $fp );
+}
+
 $parsed = parse_url( $_SERVER['REQUEST_URI'] );
 $exploded = explode( '/', $_SERVER['REQUEST_URI'] );
 $origin_domain = strtolower( $exploded[1] );
@@ -746,11 +755,7 @@ try {
 			$save = $og - filesize( $tmp );
 			do_action( 'bump_stats', 'png_bytes_saved', $save );
 			$fp = fopen( $tmp, 'r' );
-			photon_cache_headers( $url, 'image/png' );
-			header( 'Content-Length: ' . filesize( $tmp ) );
-			header( 'X-Bytes-Saved: ' . $save );
-			unlink( $tmp );
-			fpassthru( $fp );
+			serve_file( $url, 'image/png', $tmp, $save );
 			break;
 		case 'gif':
 			do_action( 'bump_stats', 'image_gif' );
@@ -776,12 +781,7 @@ try {
 			clearstatcache();
 			$save = $og - filesize( $tmp );
 			do_action( 'bump_stats', 'jpg_bytes_saved', $save );
-			$fp = fopen( $tmp, 'r' );
-			photon_cache_headers( $url );
-			header( 'Content-Length: ' . filesize( $tmp ) );
-			header( 'X-Bytes-Saved: ' . $save );
-			unlink( $tmp );
-			fpassthru( $fp );
+			serve_file( $url, 'image/jpeg', $tmp, $save );
 			break;
 	}
 
