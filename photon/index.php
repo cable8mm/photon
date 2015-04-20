@@ -707,6 +707,32 @@ function compress_image_png( $filename, $quality ) {
 	return $content_type;
 }
 
+/**
+ * Compresses the JPEG image using the best option available
+ *
+ * @param string $filename The file name of the temp image to compress
+ * @param resource $image The GraphicsMagick image resource
+ * @param int $quality The requested quality of the image
+ *
+ * @return string The content type of the final image (jpeg or webp)
+ **/
+function compress_image_jpg( $filename, $image, $quality ) {
+	$content_type = 'image/jpeg';
+	$strip = false;
+	if ( isset( $_GET['strip'] ) ) {
+		$strip = $_GET['strip'];
+		exifrotate( $filename, $image, $strip );
+	}
+	if ( false !== CWEBP && isset( $_SERVER['HTTP_ACCEPT'] ) &&
+		false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) ) {
+		$content_type = 'image/webp';
+		exec( CWEBP . " -m 2 -q $quality -o $filename $filename" );
+	} else {
+		jpegoptim( $filename, $strip );
+	}
+	return $content_type;
+}
+
 $parsed = parse_url( $_SERVER['REQUEST_URI'] );
 $exploded = explode( '/', $_SERVER['REQUEST_URI'] );
 $origin_domain = strtolower( $exploded[1] );
@@ -815,17 +841,12 @@ try {
 			$image->setcompressionquality( $quality );
 			$tmp = tempnam( $tmpdir, 'JPEGOPTIM-' );
 			$image->write( $tmp );
-			$strip = false;
-			if ( isset( $_GET['strip'] ) ) {
-				$strip = $_GET['strip'];
-				exifrotate( $tmp, $image, $strip );
-			}
 			$og = filesize( $tmp );
-			jpegoptim( $tmp, $strip );
+			$content_type = compress_image_jpg( $tmp, $image, $quality );
 			clearstatcache();
 			$save = $og - filesize( $tmp );
 			do_action( 'bump_stats', 'jpg_bytes_saved', $save );
-			serve_file( $url, 'image/jpeg', $tmp, $save );
+			serve_file( $url, $content_type, $tmp, $save );
 			break;
 	}
 
