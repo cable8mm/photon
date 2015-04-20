@@ -660,7 +660,7 @@ function serve_file( $url, $content_type, $filename, $bytes_saved ) {
 	header( 'Content-Length: ' . filesize( $filename ) );
 	header( 'X-Bytes-Saved: ' . $bytes_saved );
 	$fp = fopen( $filename, 'r' );
-	unlink( $filename );
+	register_shutdown_function( 'unlink', $filename );
 	fpassthru( $fp );
 }
 
