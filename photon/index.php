@@ -58,6 +58,10 @@ $origin_domain_exceptions = apply_filters( 'origin_domain_exceptions', array() )
 if ( ! defined( 'PHOTON__UPSCALE_MAX_PIXELS' ) )
 	define( 'PHOTON__UPSCALE_MAX_PIXELS', 2000 );
 
+// Allow smaller upscales for GIFs, compared to the other image types
+if ( ! defined( 'PHOTON__UPSCALE_MAX_PIXELS_GIF' ) )
+	define( 'PHOTON__UPSCALE_MAX_PIXELS_GIF', 1000 );
+
 require dirname( __FILE__ ) . '/libjpeg.php';
 
 // Implicit configuration

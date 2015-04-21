@@ -572,7 +572,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 				return;
 			}
 			// sane limit when upscaling, defaults to 1000
-			if ( $this->new_height > $this->int_h && $upscale && $this->new_height > PHOTON__UPSCALE_MAX_PIXELS ) {
+			if ( $this->new_height > $this->int_h && $upscale && $this->new_height > PHOTON__UPSCALE_MAX_PIXELS_GIF ) {
 				// if the sizes are too big, then we serve the original size
 				$this->new_width  = $this->int_w;
 				$this->new_height = $this->int_h;
@@ -602,7 +602,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			}
 
 			// Sane limit when upscaling, defaults to 1000
-			if ( $this->new_width > $this->int_w && $upscale && $this->new_width > PHOTON__UPSCALE_MAX_PIXELS ) {
+			if ( $this->new_width > $this->int_w && $upscale && $this->new_width > PHOTON__UPSCALE_MAX_PIXELS_GIF ) {
 				// if the sizes are too big, then we serve the original size
 				$this->new_width  = $this->int_w;
 				$this->new_height = $this->int_h;
@@ -640,8 +640,8 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 
 				// check that if we have made it bigger than the images original size, that we remain with bounds
 				if ( $this->new_width >= $this->int_w && $this->new_height >= $this->int_h ) {
-					if ( ( $this->new_width > PHOTON__UPSCALE_MAX_PIXELS ) ||
-						( $this->new_height > PHOTON__UPSCALE_MAX_PIXELS ) ) {
+					if ( ( $this->new_width > PHOTON__UPSCALE_MAX_PIXELS_GIF ) ||
+						( $this->new_height > PHOTON__UPSCALE_MAX_PIXELS_GIF ) ) {
 						$this->new_width  = $this->int_w;
 						$this->new_height = $this->int_h;
 					}
@@ -763,8 +763,8 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 					if ( $end_w >= $this->int_w && $end_h >= $this->int_h ) {
 						$this->new_width = max( $end_w, $this->int_w );
 						$this->new_height = max( $end_h, $this->int_h );
-						if ( ( $this->new_width > PHOTON__UPSCALE_MAX_PIXELS ) ||
-							( $this->new_height > PHOTON__UPSCALE_MAX_PIXELS ) ) {
+						if ( ( $this->new_width > PHOTON__UPSCALE_MAX_PIXELS_GIF ) ||
+							( $this->new_height > PHOTON__UPSCALE_MAX_PIXELS_GIF ) ) {
 							$this->new_width  = $this->int_w;
 							$this->new_height = $this->int_h;
 							return;
