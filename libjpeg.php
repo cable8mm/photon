@@ -318,13 +318,13 @@ function jpegoptim( $file, $strip = false ) {
 	$cmd = JPEGOPTIM . ' -T0.0 --all-progressive';
 	switch ( $strip ) {
 		case 'all':
-			$cmd .= ' --strip-all';
+			$cmd .= ' -f --strip-all';
 			break;
 		case 'info':
-			$cmd .= ' --strip-com --strip-exif --strip-iptc';
+			$cmd .= ' -f --strip-com --strip-exif --strip-iptc';
 			break;
 		case 'color':
-			$cmd .= ' --strip-icc';
+			$cmd .= ' -f --strip-icc';
 			break;
 	}
 	$cmd .= " -p $file";
