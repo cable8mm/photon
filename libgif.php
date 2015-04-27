@@ -522,28 +522,25 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			$hd = $offset = 13 + pow( 2, ( ord( $str_img[10] ) & 7 ) + 1 ) * 3;
 			$palet = '';
 			$i_hd = 0;
-			$m_off = 0;
 
 			for ( $i = 13; $i < $offset; $i++ )
 				$palet .= $str_img[$i];
 
 			$str_max_len = strlen( $str_img );
-			if ( $this->frame_array[$index]->transp ) {
-				while ( self::GIF_EXT_GRAPHIC_CONTROL != ord( $str_img[ $offset + $m_off ] ) ) {
-					$m_off++;
-					if ( ( $offset + $m_off + 4 ) > $str_max_len )
-						httpdie( '400 Bad Request', "unable to reprocess the image frame" );
-				}
-				$str_img[ $offset + $m_off + 2 ] = $this->gn_fld[ $index ];
-				$str_img[ $offset + $m_off + 3 ] = $this->dl_frmf[ $index ];
-				$str_img[ $offset + $m_off + 4 ] = $this->dl_frms[ $index ];
-			}
-
 			while ( self::GIF_BLOCK_IMAGE_DESCRIPTOR != ord( $str_img[ $offset ] ) ) {
-				$offset++;
-				$i_hd++;
-				if ( ( $offset + 9 ) > $str_max_len )
-					httpdie( '400 Bad Request', "unable to reprocess the image frame" );
+				if ( self::GIF_EXT_GRAPHIC_CONTROL == ord( $str_img[ $offset + 1 ] ) &&
+					$this->frame_array[$index]->transp ) {
+						$str_img[ $offset + 3 ] = $this->gn_fld[ $index ];
+						$str_img[ $offset + 4 ] = $this->dl_frmf[ $index ];
+						$str_img[ $offset + 5 ] = $this->dl_frms[ $index ];
+				}
+				$sum = 2;
+				while ( 0x00 != ( $lc_i = ord( $str_img[ $offset + $sum ] ) ) )
+					$sum += $lc_i + 1;
+				$offset += ( $sum + 1 );
+				$i_hd += ( $sum + 1 );
+				if ( ( $offset + 10 ) > $str_max_len )
+					imageresize_graceful_fail();
 			}
 
 			$str_img[ $offset + 1 ] = $this->frame_array[ $index ]->off_xy[0];
@@ -551,8 +548,8 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			$str_img[ $offset + 3 ] = $this->frame_array[ $index ]->off_xy[2];
 			$str_img[ $offset + 4 ] = $this->frame_array[ $index ]->off_xy[3];
 			$str_img[ $offset + 9 ] = chr( $str_img[ $offset + 9 ] | 0x80 | ( ord( $str_img[10] ) & 0x7 ) );
-			$ms1 = substr( $str_img, $hd, $i_hd + 10 );
 
+			$ms1 = substr( $str_img, $hd, $i_hd + 10 );
 			$ms1 = $this->frame_array[$index]->gr_mod . $ms1;
 
 			return $ms1 . $palet . substr( substr( $str_img, $offset + 10 ), 0, -1 );
