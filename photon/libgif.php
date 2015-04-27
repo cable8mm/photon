@@ -467,8 +467,8 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 				$s_height = $this->frame_array[$index]->height;
 			}
 
-			if ( 0 == $n_width )  $n_width   = 1;
-			if ( 0 == $n_height ) $n_height  = 1;
+			if ( 0 >= $n_width )  $n_width   = 1;
+			if ( 0 >= $n_height ) $n_height  = 1;
 			if ( 0 >= $s_width )  $s_width   = 1;
 			if ( 0 >= $s_height ) $s_height  = 1;
 
