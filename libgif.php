@@ -540,7 +540,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 				$offset += ( $sum + 1 );
 				$i_hd += ( $sum + 1 );
 				if ( ( $offset + 10 ) > $str_max_len )
-					imageresize_graceful_fail();
+					httpdie( '400 Bad Request', "unable to reprocess the image frame" );
 			}
 
 			$str_img[ $offset + 1 ] = $this->frame_array[ $index ]->off_xy[0];
