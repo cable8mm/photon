@@ -820,7 +820,6 @@ try {
 
 	switch ( $type ) {
 		case 'png':
-			do_action( 'bump_stats', 'image_png' );
 			$image->setcompressionquality( $quality );
 			$tmp = tempnam( $tmpdir, 'OPTIPNG-' );
 			$image->write( $tmp );
@@ -828,8 +827,9 @@ try {
 			$content_type = compress_image_png( $tmp, $quality );
 			clearstatcache();
 			$save = $og - filesize( $tmp );
-			do_action( 'bump_stats', 'png_bytes_saved', $save );
 			serve_file( $url, $content_type, $tmp, $save );
+			do_action( 'bump_stats', 'image_png' . ( 'image/webp' == $content_type ? '_as_webp' : '' ) );
+			do_action( 'bump_stats', 'png_bytes_saved', $save );
 			break;
 		case 'gif':
 			do_action( 'bump_stats', 'image_gif' );
@@ -841,7 +841,6 @@ try {
 			}
 			break;
 		default:
-			do_action( 'bump_stats', 'image_jpeg' );
 			$image->setcompressionquality( $quality );
 			$tmp = tempnam( $tmpdir, 'JPEGOPTIM-' );
 			$image->write( $tmp );
@@ -849,8 +848,9 @@ try {
 			$content_type = compress_image_jpg( $tmp, $image, $quality );
 			clearstatcache();
 			$save = $og - filesize( $tmp );
-			do_action( 'bump_stats', 'jpg_bytes_saved', $save );
 			serve_file( $url, $content_type, $tmp, $save );
+			do_action( 'bump_stats', 'image_jpeg' . ( 'image/webp' == $content_type ? '_as_webp' : '' ) );
+			do_action( 'bump_stats', 'jpg_bytes_saved', $save );
 			break;
 	}
 
