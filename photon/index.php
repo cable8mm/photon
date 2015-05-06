@@ -694,13 +694,13 @@ function compress_image_png( $filename, $quality ) {
 		} else if ( false !== CWEBP && isset( $_SERVER['HTTP_ACCEPT'] ) &&
 				false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) ) {
 			$content_type = 'image/webp';
-			exec( CWEBP . " --lossless $filename -o $filename" );
+			exec( CWEBP . " -quiet --lossless $filename -o $filename" );
 		}
 	} else {
 		if ( false !== CWEBP && isset( $_SERVER['HTTP_ACCEPT'] ) &&
 			false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) ) {
 			$content_type = 'image/webp';
-			exec( CWEBP . " -q $quality -alpha_q 100 $filename -o $filename" );
+			exec( CWEBP . " -quiet -q $quality -alpha_q 100 $filename -o $filename" );
 		} else if ( false !== PNGQUANT ) {
 			exec( PNGQUANT . ' --speed 5 --quality=' . $quality . "-100 -f -o $filename $filename" );
 			if ( false !== OPTIPNG ) exec( OPTIPNG . " -o1 $filename" );
@@ -730,7 +730,7 @@ function compress_image_jpg( $filename, $image, $quality ) {
 	if ( false !== CWEBP && isset( $_SERVER['HTTP_ACCEPT'] ) &&
 		false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) ) {
 		$content_type = 'image/webp';
-		exec( CWEBP . " -m 2 -q $quality -o $filename $filename" );
+		exec( CWEBP . " -quiet -m 2 -q $quality -o $filename $filename" );
 	} else {
 		jpegoptim( $filename, $strip );
 	}
