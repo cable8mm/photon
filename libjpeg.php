@@ -276,10 +276,6 @@ function get_jpeg_quality( &$buff, $buff_len = null ) {
 }
 
 function exifrotate( $file, $image, $strip ) {
-	// If jpegoptim is not available, we won't strip EXIF, so don't rotate
-	if ( false === JPEGOPTIM )
-		return;
-
 	if ( ! function_exists( 'exif_read_data' ) )
 		return;
 
