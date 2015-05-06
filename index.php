@@ -722,16 +722,17 @@ function compress_image_png( $filename, $quality ) {
  **/
 function compress_image_jpg( $filename, $image, $quality ) {
 	$content_type = 'image/jpeg';
-	$strip = false;
-	if ( isset( $_GET['strip'] ) ) {
-		$strip = $_GET['strip'];
-		exifrotate( $filename, $image, $strip );
-	}
 	if ( false !== CWEBP && isset( $_SERVER['HTTP_ACCEPT'] ) &&
 		false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) ) {
 		$content_type = 'image/webp';
+		exifrotate( $filename, $image, true );
 		exec( CWEBP . " -quiet -m 2 -q $quality -o $filename $filename" );
 	} else {
+		$strip = false;
+		if ( isset( $_GET['strip'] ) ) {
+			$strip = $_GET['strip'];
+			exifrotate( $filename, $image, $strip );
+		}
 		jpegoptim( $filename, $strip );
 	}
 	return $content_type;
