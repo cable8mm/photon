@@ -727,7 +727,7 @@ function compress_image_jpg( $filename, $image, $quality ) {
 		$content_type = 'image/webp';
 		exifrotate( $filename, $image, true );
 		exec( CWEBP . " -quiet -m 2 -q $quality -o $filename $filename" );
-	} else {
+	} else if ( false !== JPEGOPTIM ) {
 		$strip = false;
 		if ( isset( $_GET['strip'] ) ) {
 			$strip = $_GET['strip'];
