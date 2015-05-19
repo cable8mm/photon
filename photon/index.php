@@ -669,6 +669,10 @@ function photon_cache_headers( $image_url, $content_type = 'image/jpeg', $expire
 	header( 'X-Content-Type-Options: nosniff' );
 	header( 'Link: <' . $image_url . '>; rel="canonical"' );
 	header( 'Content-Type: ' . $content_type );
+	// animated webp images are not much smaller than GIFs and take an age to convert,
+	// ignore them and do not affect caching with the Vary header.
+	if ( 'image/gif' != $content_type )
+		header( 'Vary: Accept' );
 }
 
 function serve_file( $url, $content_type, $filename, $bytes_saved ) {
