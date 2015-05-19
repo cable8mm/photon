@@ -75,8 +75,10 @@ if ( file_exists( '/usr/local/bin/pngquant' ) )
 else
 	define( 'PNGQUANT', false );
 
-// WEBP image functionality added, but currently disabled
-define( 'CWEBP', false );
+if ( file_exists( '/usr/local/bin/cwebp' ) )
+	define( 'CWEBP', '/usr/local/bin/cwebp' );
+else
+	define( 'CWEBP', false );
 
 if ( file_exists( '/usr/local/bin/jpegoptim' ) )
 	define( 'JPEGOPTIM', '/usr/local/bin/jpegoptim' );
@@ -691,13 +693,13 @@ function compress_image_png( $filename, $quality ) {
 	if ( isset( $_GET['quality'] ) && 100 == intval( $_GET['quality'] ) ) {
 		if ( false !== OPTIPNG ) {
 			exec( OPTIPNG . " $filename" );
-		} else if ( false !== CWEBP && ! defined( 'CWEBP_DISABLE_PNG' ) &&
+		} else if ( false !== CWEBP && ( defined( 'CWEBP_PNG' ) && true === CWEBP_PNG ) &&
 				isset( $_SERVER['HTTP_ACCEPT'] ) && false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) ) {
 			$content_type = 'image/webp';
 			exec( CWEBP . " -quiet --lossless $filename -o $filename" );
 		}
 	} else {
-		if ( false !== CWEBP && ! defined( 'CWEBP_DISABLE_PNG' ) &&
+		if ( false !== CWEBP && ( defined( 'CWEBP_PNG' ) && true === CWEBP_PNG ) &&
 			isset( $_SERVER['HTTP_ACCEPT'] ) && false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) ) {
 			$content_type = 'image/webp';
 			exec( CWEBP . " -quiet -q $quality -alpha_q 100 $filename -o $filename" );
@@ -722,7 +724,7 @@ function compress_image_png( $filename, $quality ) {
  **/
 function compress_image_jpg( $filename, $image, $quality ) {
 	$content_type = 'image/jpeg';
-	if ( false !== CWEBP && ! defined( 'CWEBP_DISABLE_JPEG' ) &&
+	if ( false !== CWEBP && ( defined( 'CWEBP_JPEG' ) && true === CWEBP_JPEG ) &&
 		isset( $_SERVER['HTTP_ACCEPT'] ) && false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) ) {
 		$content_type = 'image/webp';
 		exifrotate( $filename, $image, true );
