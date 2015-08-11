@@ -856,7 +856,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			if ( ! $this->au )
 				$con = "\x21\xFE\x0Eautomattic_inc\x00" . $con;
 
-			$this->image_data .= ( iconv_strlen( $con ) >= 19 ? $con : "\x21" );
+			$this->image_data .= ( strlen( $con ) >= 19 ? $con : "\x21" );
 
 			return $this->image_data;
 		}
