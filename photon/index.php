@@ -16,8 +16,8 @@ $allowed_functions = apply_filters( 'allowed_functions', array(
 //	'zoom'        => global resolution multiplier (argument filter)
 //	'quality'     => sets the quality of JPEG images during processing
 //	'strip        => strips JPEG images of exif, icc or all "extra" data (params: info,color,all)
-	'h'           => 'setheight',       // done
-	'w'           => 'setwidth',        // done
+	'h'           => 'set_height',      // done
+	'w'           => 'set_width',       // done
 	'crop'        => 'crop',            // done
 	'resize'      => 'resize_and_crop', // done
 	'fit'         => 'fit_in_box',      // done
@@ -119,8 +119,8 @@ function zoom( $arguments, $function_name, $image ) {
 	$h = $image->getimageheight();
 
 	switch ( $function_name ) {
-		case 'setheight' :
-		case 'setwidth' :
+		case 'set_height' :
+		case 'set_width' :
 			$new_arguments = $arguments * $zoom;
 			if ( substr( $arguments, -1 ) == '%' )
 				$new_arguments .= '%';
@@ -192,7 +192,7 @@ function crop( &$image, $args ) {
 }
 
 /**
- * setheight - ( "h" function via the uri ) - resize the image to an explicit height, maintaining its aspect ratio
+ * set_height - ( "h" function via the uri ) - resize the image to an explicit height, maintaining its aspect ratio
  *
  * @param (resource)image the source gd image resource
  * @param (string)args "/^[0-9]+%?$/" the new height in pixels, or as a percentage if suffixed with an %
@@ -200,7 +200,7 @@ function crop( &$image, $args ) {
  *
  * @return (resource) the resulting gs image resource
  **/
-function setheight( &$image, $args, $upscale = false ) {
+function set_height( &$image, $args, $upscale = false ) {
 	$w = $image->getimagewidth();
 	$h = $image->getimageheight();
 
@@ -229,7 +229,7 @@ function setheight( &$image, $args, $upscale = false ) {
 }
 
 /**
- * setwidth - ( "w" function via the uri ) - resize the image to an explicit width, maintaining its aspect ratio
+ * set_width - ( "w" function via the uri ) - resize the image to an explicit width, maintaining its aspect ratio
  *
  * @param (resource)image the source gd image resource
  * @param (string)args "/^[0-9]+%?$/" the new width in pixels, or as a percentage if suffixed with an %
@@ -237,7 +237,7 @@ function setheight( &$image, $args, $upscale = false ) {
  *
  * @return (resource) the resulting gs image resource
  **/
-function setwidth( &$image, $args, $upscale = false ) {
+function set_width( &$image, $args, $upscale = false ) {
 	$w = $image->getimagewidth();
 	$h = $image->getimageheight();
 
@@ -294,7 +294,7 @@ function fit_in_box( &$image, $args ) {
 /**
  * resize_and_crop - ("resize" function via the uri) - originally by Alex M.
  *
- * Differs from setwidth, setheight, and crop in that you provide a width/height and it resizes to that and then crops off excess
+ * Differs from set_width, set_height, and crop in that you provide a width/height and it resizes to that and then crops off excess
  *
  * @param (resource) image the source gd image resource
  * @param (string) args "w,h" width,height in pixels
@@ -325,18 +325,18 @@ function resize_and_crop( &$image, $args ) {
 
 	// If the original and new images are proportional (no cropping needed), just do a standard resize
 	if ( $ratio_orig == $ratio_end )
-		setwidth( $image, $end_w, true );
+		set_width( $image, $end_w, true );
 
 	// If we need to crop off the sides
 	elseif ( $ratio_orig > $ratio_end ) {
-		setheight( $image, $end_h, true );
+		set_height( $image, $end_h, true );
 		$x = floor( ( $image->getimagewidth() - $end_w ) / 2 );
 		crop( $image, "{$x}px,0px,{$end_w}px,{$end_h}px" );
 	}
 
 	// If we need to crop off the top/bottom
 	elseif ( $ratio_orig < $ratio_end ) {
-		setwidth( $image, $end_w, true );
+		set_width( $image, $end_w, true );
 		$y = floor( ( $image->getimageheight() - $end_h ) / 2 );
 		crop( $image, "0px,{$y}px,{$end_w}px,{$end_h}px" );
 	}
@@ -840,9 +840,9 @@ try {
 			break;
 		case 'gif':
 			do_action( 'bump_stats', 'image_gif' );
-			if ( $image->process_image() ) {
+			if ( $image->process_image_functions( PHOTON__UPSCALE_MAX_PIXELS_GIF ) ) {
 				photon_cache_headers( $url, 'image/gif' );
-				echo $image->get_imageblob();
+				echo $image->get_image_blob();
 			} else {
 				httpdie( '400 Bad Request', "Sorry, the parameters you provided were not valid" );
 			}

@@ -1,6 +1,7 @@
 <?php
 /*
- * Classes to handle the cropping, resizing and manipulation of animated GIF image files.
+ * Classes to manipulate animated GIF images.
+ * Maintained at: https://code.trac.wordpress.org/browser/photon/libgif.php
 */
 
 if ( ! class_exists( 'Gif_Frame' ) ) {
@@ -18,22 +19,22 @@ if ( ! class_exists( 'Gif_Frame' ) ) {
 		private $_image;
 
 		function __construct( $lc_mod, $palette, $image, $head, $box_dims, $gr_mod ) {
-			$this->pos_x    = $box_dims[0];
-			$this->pos_y    = $box_dims[1];
-			$this->width    = $box_dims[2];
-			$this->height   = $box_dims[3];
+			$this->pos_x   = $box_dims[0];
+			$this->pos_y   = $box_dims[1];
+			$this->width   = $box_dims[2];
+			$this->height  = $box_dims[3];
 
-			$this->lc_mod   = $lc_mod;
-			$this->gr_mod   = $gr_mod;
-			$this->palette  = $palette;
+			$this->lc_mod  = $lc_mod;
+			$this->gr_mod  = $gr_mod;
+			$this->palette = $palette;
 
 			if ( strlen( $gr_mod ) == 8 )
-				$this->transp   = ord( $gr_mod[3] ) & 1 ? 1 : 0;
+				$this->transp = ord( $gr_mod[3] ) & 1 ? 1 : 0;
 			else
-				$this->transp   = 0;
+				$this->transp = 0;
 
-			$this->head     = $head;
-			$this->image    = $image;
+			$this->head    = $head;
+			$this->image   = $image;
 		}
 
 		public function __set( $name, $value ) {
@@ -70,6 +71,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 		private $crop_width = 0;
 		private $crop_height = 0;
 		private $crop = false;
+		private $fit = false;
 		private $resize_ratio = Array( 0, 0 );
 		private $frame_count = 0;
 		private $au = 0;
@@ -82,8 +84,10 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 		private $dl_frms = Array();
 		private $pre_process_actions = Array();
 		private $post_process_actions = Array();
+		private $upscale_max_pixels = 1000;
+		private $zoom_enabled = true;
 
-		private static $pre_actions = Array( 'setheight', 'setwidth', 'crop', 'resize_and_crop', 'fit_in_box' );
+		private static $pre_actions = Array( 'set_height', 'set_width', 'crop', 'crop_offset', 'resize_and_crop', 'fit_in_box' );
 
 		const optimize = true;
 
@@ -99,17 +103,18 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 		function __construct( $gif_data ) {
 			$this->gif = $gif_data;
 			$this->max_len = strlen( $gif_data );
-			if ( $this->max_len < 14 )
-				httpdie( '400 Bad Request', "unable to process the image data" );
-
+			if ( $this->max_len < 14 ) {
+				$this->error_and_die( '400 Bad Request', 'unable to process the image data' );
+			}
 			$this->gif_header = $this->get_bytes(13);
 			$this->parse_header();
 			$this->parse_frames();
 
 			$buffer_add = '';
 			while ( self::GIF_BLOCK_END != ord( $this->gif[ $this->ptr ] ) ) {
-				if ( $this->ptr >= $this->max_len )
-					httpdie( '400 Bad Request', "unable to process the image data" );
+				if ( $this->ptr >= $this->max_len ) {
+					$this->error_and_die( '400 Bad Request', 'unable to process the image data' );
+				}
 				switch ( ord( $this->gif[ $this->ptr + 1 ] ) ) {
 					case self::GIF_EXT_COMMENT:
 						$sum = 2;
@@ -180,8 +185,9 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 							// invalid start header found, increment by 1 byte to 'sync' to the next header
 							$this->get_bytes( 1 );
 					}
-					if ( $this->ptr >= $this->max_len )
-						httpdie( '400 Bad Request', "unable to process the image header" );
+					if ( $this->ptr >= $this->max_len ) {
+						$this->error_and_die( '400 Bad Request', 'unable to process the image data' );
+					}
 				}
 				$this->g_mod = $buff;
 			}
@@ -198,8 +204,9 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 						$this->frame_count--;
 						continue 2;
 					}
-					if ( $this->ptr >= $this->max_len )
-						httpdie( '400 Bad Request', "unable to process the image frames" );
+					if ( $this->ptr >= $this->max_len ) {
+						$this->error_and_die( '400 Bad Request', 'unable to process the image data' );
+					}
 					switch ( ord( $this->gif[ $this->ptr + 1 ] ) ) {
 						case self::GIF_EXT_GRAPHIC_CONTROL:
 							$this->gn_fld[]  = $this->gif[ $this->ptr + 3 ];
@@ -304,6 +311,17 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 
 		private function int_raw( $int ) {
 			return chr( $int & 255 ) . chr( ( $int & 0xFF00 ) >> 8 );
+		}
+
+		private function error_and_die( $result = '400 Bad Request', $message = '' ) {
+			if ( function_exists( 'imageresize_graceful_fail' ) ) {
+				imageresize_graceful_fail();
+			} else if ( function_exists( 'httpdie' ) ) {
+				httpdie( $result, $message );
+			} else {
+				header( "HTTP/1.1 $result" );
+				die( $message );
+			}
 		}
 
 		private function filter( &$image, $filter ) {
@@ -461,8 +479,13 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			} else {
 				$offset_x = 0;
 				$offset_y = 0;
-				$n_width  = round( $this->frame_array[$index]->width * $this->resize_ratios[0] ) ? : 1;
-				$n_height = round( $this->frame_array[$index]->height * $this->resize_ratios[1] ) ? : 1;
+				if ( $this->fit ) {
+					$n_width  = $this->new_width;
+					$n_height = $this->new_height;
+				} else {
+					$n_width  = round( $this->frame_array[$index]->width * $this->resize_ratios[0] ) ? : 1;
+					$n_height = round( $this->frame_array[$index]->height * $this->resize_ratios[1] ) ? : 1;
+				}
 				$s_width  = $this->frame_array[$index]->width;
 				$s_height = $this->frame_array[$index]->height;
 			}
@@ -539,8 +562,9 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 					$sum += $lc_i + 1;
 				$offset += ( $sum + 1 );
 				$i_hd += ( $sum + 1 );
-				if ( ( $offset + 10 ) > $str_max_len )
-					httpdie( '400 Bad Request', "unable to reprocess the image frame" );
+				if ( ( $offset + 10 ) > $str_max_len ) {
+					$this->error_and_die( '400 Bad Request', 'unable to reprocess the image frame' );
+				}
 			}
 
 			$str_img[ $offset + 1 ] = $this->frame_array[ $index ]->off_xy[0];
@@ -555,7 +579,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			return $ms1 . $palet . substr( substr( $str_img, $offset + 10 ), 0, -1 );
 		}
 
-		private function setheight( $args, $upscale = false ) {
+		private function set_height( $args, $upscale = false ) {
 			if ( substr( $args, -1 ) == '%' )
 				$this->new_height = round( $this->int_h * abs( intval( $args ) ) / 100 );
 			else
@@ -569,7 +593,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 				return;
 			}
 			// sane limit when upscaling, defaults to 1000
-			if ( $this->new_height > $this->int_h && $upscale && $this->new_height > PHOTON__UPSCALE_MAX_PIXELS_GIF ) {
+			if ( $this->new_height > $this->int_h && $upscale && $this->new_height > $this->upscale_max_pixels ) {
 				// if the sizes are too big, then we serve the original size
 				$this->new_width  = $this->int_w;
 				$this->new_height = $this->int_h;
@@ -584,7 +608,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			$this->crop_height = $this->new_height;
 		}
 
-		private function setwidth( $args, $upscale = false ) {
+		private function set_width( $args, $upscale = false ) {
 			if ( '%' == substr( $args, -1 ) )
 				$this->new_width = round( $this->int_w * abs( intval( $args ) ) / 100 );
 			else
@@ -599,7 +623,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			}
 
 			// Sane limit when upscaling, defaults to 1000
-			if ( $this->new_width > $this->int_w && $upscale && $this->new_width > PHOTON__UPSCALE_MAX_PIXELS_GIF ) {
+			if ( $this->new_width > $this->int_w && $upscale && $this->new_width > $this->upscale_max_pixels ) {
 				// if the sizes are too big, then we serve the original size
 				$this->new_width  = $this->int_w;
 				$this->new_height = $this->int_h;
@@ -637,8 +661,8 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 
 				// check that if we have made it bigger than the images original size, that we remain with bounds
 				if ( $this->new_width >= $this->int_w && $this->new_height >= $this->int_h ) {
-					if ( ( $this->new_width > PHOTON__UPSCALE_MAX_PIXELS_GIF ) ||
-						( $this->new_height > PHOTON__UPSCALE_MAX_PIXELS_GIF ) ) {
+					if ( ( $this->new_width > $this->upscale_max_pixels ) ||
+						( $this->new_height > $this->upscale_max_pixels ) ) {
 						$this->new_width  = $this->int_w;
 						$this->new_height = $this->int_h;
 					}
@@ -653,7 +677,6 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 				$this->new_height = $this->int_h;
 				return;
 			}
-
 			list( $end_w, $end_h ) = explode( ',', $args );
 
 			$end_w = abs( intval( $end_w ) );
@@ -684,6 +707,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 						$this->new_width = round( $this->int_w / ( $this->int_h / $end_h ) );
 					}
 				}
+				$this->fit = true;
 			}
 		}
 
@@ -694,7 +718,6 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 				$this->new_height = $this->int_h;
 				return;
 			}
-
 			$args = explode( ',', $args );
 
 			// if we don't have the correct number of args, default
@@ -729,6 +752,32 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			$this->crop = true;
 		}
 
+		private function crop_offset( $args ) {
+			// if the args are malformed, default to the original size
+			if ( false === strpos( $args, ',' ) ) {
+				$this->new_width  = $this->int_w;
+				$this->new_height = $this->int_h;
+				return;
+			}
+			$args = explode( ',', $args );
+
+			// if we don't have the correct number of args, default
+			if ( count( $args ) != 4 ) {
+				$this->new_width  = $this->int_w;
+				$this->new_height = $this->int_h;
+				return;
+			}
+
+			$this->crop_width = max( 0, min( $this->int_w, intval( $args[2] ) ) );
+			$this->crop_height = max( 0, min( $this->int_h, intval( $args[3] ) ) );
+			$this->s_x = intval( $args[0] );
+			$this->s_y = intval( $args[1] );
+
+			$this->new_width = $this->crop_width;
+			$this->new_height = $this->crop_height;
+			$this->crop = true;
+		}
+
 		private function resize_and_crop( $args ) {
 			// if the args are malformed, default to the original size
 			if ( false === strpos( $args, ',' ) ) {
@@ -753,40 +802,77 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 
 			// If the original and new images are proportional (no cropping needed), just do a standard resize
 			if ( $ratio_orig == $ratio_end ) {
-				$this->setwidth( $end_w, true );
+				$this->set_width( $end_w, true );
 			} else {
-					$aspect_ratio = $this->int_w / $this->int_h;
+				if ( $end_w >= $this->int_w && $end_h >= $this->int_h ) {
+					$this->new_width = max( $end_w, $this->int_w );
+					$this->new_height = max( $end_h, $this->int_h );
+				} else {
+					$this->new_width = $end_w;
+					$this->new_height = $end_h;
+				}
 
-					if ( $end_w >= $this->int_w && $end_h >= $this->int_h ) {
-						$this->new_width = max( $end_w, $this->int_w );
-						$this->new_height = max( $end_h, $this->int_h );
-						if ( ( $this->new_width > PHOTON__UPSCALE_MAX_PIXELS_GIF ) ||
-							( $this->new_height > PHOTON__UPSCALE_MAX_PIXELS_GIF ) ) {
-							$this->new_width  = $this->int_w;
-							$this->new_height = $this->int_h;
-							return;
-						}
-					} else {
-						$this->new_width = $end_w;
-						$this->new_height = $end_h;
-					}
+				if ( ! $this->new_width )
+					$this->new_width = intval( $this->new_height * $ratio_orig );
+				if ( ! $this->new_height )
+					$this->new_height = intval( $this->new_width / $ratio_orig );
 
-					if ( ! $this->new_width )
-						$this->new_width = intval( $this->new_height * $aspect_ratio );
-					if ( ! $this->new_height )
-						$this->new_height = intval( $this->new_width / $aspect_ratio );
+				// Check if the width or height are too large, if they are then default to original size
+				if ( ( ( $this->new_width > $this->int_w ) && ( $this->new_width > $this->upscale_max_pixels ) ) ||
+					( $this->new_height > $this->int_h && ( $this->new_height > $this->upscale_max_pixels ) ) ) {
+					$this->new_width = $this->int_w;
+					$this->new_height = $this->int_h;
+					return;
+				}
 
-					$size_ratio = max( $this->new_width / $this->int_w, $this->new_height / $this->int_h );
-					$this->crop_width = min( ceil( $this->new_width / $size_ratio ), $this->int_w );
-					$this->crop_height = min( ceil( $this->new_height / $size_ratio ), $this->int_h );
+				$size_ratio = max( $this->new_width / $this->int_w, $this->new_height / $this->int_h );
+				$this->crop_width = min( ceil( $this->new_width / $size_ratio ), $this->int_w );
+				$this->crop_height = min( ceil( $this->new_height / $size_ratio ), $this->int_h );
 
-					$this->s_x = round( ( $this->int_w - $this->crop_width ) / 2 );
-					$this->s_y = round( ( $this->int_h - $this->crop_height ) / 2 );
-					$this->crop = true;
+				$this->s_x = round( ( $this->int_w - $this->crop_width ) / 2 );
+				$this->s_y = round( ( $this->int_h - $this->crop_height ) / 2 );
+				$this->crop = true;
 			}
 		}
 
-		public function process_image() {
+		public function process_image( $new_w, $new_h, $crop, $s_x, $s_y, $crop_w, $crop_h ) {
+			// if the gif image has an invalid size for either value, do not process it
+			if ( 1 > $this->int_w || 1 > $this->int_h )
+				return false;
+
+			$this->new_width   = $new_w;
+			$this->new_height  = $new_h;
+			$this->crop        = $crop;
+			$this->s_x         = $s_x;
+			$this->s_y         = $s_y;
+			$this->crop_width  = $crop_w;
+			$this->crop_height = $crop_h;
+
+			// we fail if the image size is too small
+			if ( 1 > $this->new_width || 1 > $this->new_height )
+				return false;
+
+			if ( $this->crop ) {
+				$this->resize_ratios[0] = $this->new_width / $this->crop_width;
+				$this->resize_ratios[1] = $this->new_height / $this->crop_height;
+			} else {
+				$this->resize_ratios[0] = $this->new_width / $this->int_w;
+				$this->resize_ratios[1] = $this->new_height / $this->int_h;
+			}
+
+			$this->image_data = '';
+			for ( $i = 0; $i < $this->frame_count; $i++ ) {
+				$this->image_data .= $this->repack_frame( $this->process_frame( $this->get_frame_image( $i ), $i ), $i );
+				$this->frame_array[ $i ] = null;
+			}
+
+			return true;
+		}
+
+		public function process_image_functions( $upscale_max_pixels ) {
+			if ( isset( $upscale_max_pixels ) )
+				$this->upscale_max_pixels = $upscale_max_pixels;
+
 			// if the gif image has an invalid size for either value, do not process it
 			if ( 1 > $this->int_w || 1 > $this->int_h )
 				return false;
@@ -794,7 +880,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			// we need at least one action to perform otherwise we should just send the original
 			if ( 0 == count( $this->pre_process_actions ) ) {
 				$this->pre_process_actions[] = Array (
-												'func_name' => 'setWidth',
+												'func_name' => 'set_width',
 												'params'    => $this->int_w,
 												);
 			}
@@ -803,15 +889,13 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			// do the pre-processing functions
 			foreach ( $this->pre_process_actions as $action ) {
 				$this->$action[ 'func_name' ]( $action[ 'params' ] );
-				if ( 'crop' == $action[ 'func_name' ] )
+				if ( 'crop' == $action[ 'func_name' ] || 'crop_offset' == $action[ 'func_name' ] )
 					$cropped = true;
 			}
 
-			// zoom functionality is not supported with the 'crop' function
-			if ( ! $cropped ) {
-				// check if zoom needs to be run, and run if neccessary
-				if ( isset( $_GET['zoom'] ) )
-					$this->zoom( $_GET['zoom'] );
+			// zoom functionality is not supported with the 'crop-style' functions
+			if ( ! $cropped && isset( $_GET['zoom'] ) && $this->zoom_enabled ) {
+				$this->zoom( $_GET['zoom'] );
 			}
 
 			// we fail if the image size is too small
@@ -835,7 +919,7 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 			return true;
 		}
 
-		public function get_imageblob() {
+		public function get_image_blob() {
 			$gm = $this->gif_header;
 			$gm[10] = $gm[10] & 0x7F;
 			$i_bytes = $this->int_raw( round( ( $this->crop ? $this->crop_width : $this->int_w ) * $this->resize_ratios[0] ) ? : 1 );
@@ -873,6 +957,22 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 												'params'    => $arguments,
 												);
 			}
+		}
+
+		public function get_frame_count() {
+			return $this->frame_count;
+		}
+
+		public function get_image_width() {
+			return intval( $this->int_w );
+		}
+
+		public function get_image_height() {
+			return intval( $this->int_h );
+		}
+
+		public function disable_zoom() {
+			$this->zoom_enabled = false;
 		}
 	}
 }
