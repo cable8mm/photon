@@ -1,7 +1,7 @@
 <?php
 
 define( 'PHOTON__ALLOW_QUERY_STRINGS', 1 );
-define( 'PHOTON__DEFAULT_MAX_QUALITY', 90 );
+define( 'PHOTON__DEFAULT_MAX_QUALITY', 89 );
 define( 'PHOTON__PNG_MAX_QUALITY', 80 );
 
 require dirname( __FILE__ ) . '/plugin.php';
@@ -813,6 +813,8 @@ unset( $raw_data );
 
 if ( isset( $_GET['quality'] ) )
 	$quality = min( max( intval( $_GET['quality'] ), 20 ), $quality );
+else
+	$quality = min( PHOTON__DEFAULT_MAX_QUALITY, $quality );
 
 try {
 	// Run through all uri supplied functions which are valid and allowed
