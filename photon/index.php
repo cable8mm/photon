@@ -65,22 +65,22 @@ if ( ! defined( 'PHOTON__UPSCALE_MAX_PIXELS_GIF' ) )
 require dirname( __FILE__ ) . '/libjpeg.php';
 
 // Implicit configuration
-if ( file_exists( '/usr/local/bin/optipng' ) )
+if ( file_exists( '/usr/local/bin/optipng' ) && ! defined( 'DISABLE_IMAGE_OPTIMIZATIONS' ) )
 	define( 'OPTIPNG', '/usr/local/bin/optipng' );
 else
 	define( 'OPTIPNG', false );
 
-if ( file_exists( '/usr/local/bin/pngquant' ) )
+if ( file_exists( '/usr/local/bin/pngquant' ) && ! defined( 'DISABLE_IMAGE_OPTIMIZATIONS' ) )
 	define( 'PNGQUANT', '/usr/local/bin/pngquant' );
 else
 	define( 'PNGQUANT', false );
 
-if ( file_exists( '/usr/local/bin/cwebp' ) )
+if ( file_exists( '/usr/local/bin/cwebp' ) && ! defined( 'DISABLE_IMAGE_OPTIMIZATIONS' ) )
 	define( 'CWEBP', '/usr/local/bin/cwebp' );
 else
 	define( 'CWEBP', false );
 
-if ( file_exists( '/usr/local/bin/jpegoptim' ) )
+if ( file_exists( '/usr/local/bin/jpegoptim' ) && ! defined( 'DISABLE_IMAGE_OPTIMIZATIONS' ) )
 	define( 'JPEGOPTIM', '/usr/local/bin/jpegoptim' );
 else
 	define( 'JPEGOPTIM', false );
@@ -678,7 +678,11 @@ function photon_cache_headers( $image_url, $content_type = 'image/jpeg', $expire
 function serve_file( $url, $content_type, $filename, $bytes_saved ) {
 	photon_cache_headers( $url, $content_type );
 	header( 'Content-Length: ' . filesize( $filename ) );
-	header( 'X-Bytes-Saved: ' . $bytes_saved );
+	if ( defined( 'DISABLE_IMAGE_OPTIMIZATIONS' ) ) {
+		header( "X-Optim-Disabled: true" );
+	} else {
+		header( 'X-Bytes-Saved: ' . $bytes_saved );
+	}
 	$fp = fopen( $filename, 'r' );
 	register_shutdown_function( 'unlink', $filename );
 	fpassthru( $fp );
