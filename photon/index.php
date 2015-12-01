@@ -732,8 +732,14 @@ function compress_image_png( $filename, $quality ) {
  **/
 function compress_image_jpg( $filename, $image, $quality ) {
 	$content_type = 'image/jpeg';
+	// Convert to WEBP if the following hold:
+	// 1. WEBP image processing for JPEGs is enabled.
+	// 2. The client is advertising support for WEBP in the accept header.
+	// 3. The requested quality is not 100%, as we need to honour sending images at their original
+	//    visual quality and WEBP images at high quality are larger than their JPEG counterparts.
 	if ( false !== CWEBP && ( defined( 'CWEBP_JPEG' ) && true === CWEBP_JPEG ) &&
-		isset( $_SERVER['HTTP_ACCEPT'] ) && false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) ) {
+		isset( $_SERVER['HTTP_ACCEPT'] ) && false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) &&
+		! ( isset( $_GET['quality'] ) && 100 == intval( $_GET['quality'] ) ) ) {
 		$content_type = 'image/webp';
 		exifrotate( $filename, $image, true );
 		exec( CWEBP . " -quiet -m 2 -q $quality -o $filename $filename" );
