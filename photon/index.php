@@ -677,7 +677,9 @@ function photon_cache_headers( $image_url, $content_type = 'image/jpeg', $expire
 
 function serve_file( $url, $content_type, $filename, $bytes_saved ) {
 	photon_cache_headers( $url, $content_type );
-	header( 'Content-Length: ' . filesize( $filename ) );
+	$filesize = filesize( $filename );
+	header( 'ETag: "' . substr( md5( $filesize . '.' . time() ), 0, 16 ) . '"' );
+	header( 'Content-Length: ' . $filesize );
 	if ( defined( 'DISABLE_IMAGE_OPTIMIZATIONS' ) ) {
 		header( "X-Optim-Disabled: true" );
 	} else {
@@ -798,6 +800,8 @@ if ( 'GIF' === substr( $raw_data, 0, 3 ) ) {
 	if ( 0 === strlen( $_SERVER['QUERY_STRING'] ) ) {
 		do_action( 'bump_stats', 'image_gif' );
 		photon_cache_headers( $url, 'image/gif' );
+		header( 'ETag: "' . substr( md5( $raw_data_size . '.' . time() ), 0, 16 ) . '"' );
+		header( 'Content-Length: ' . $raw_data_size );
 		die( $raw_data );
 	}
 } else {
