@@ -942,6 +942,11 @@ if ( ! class_exists( 'Gif_Image' ) ) {
 
 			$this->image_data .= ( strlen( $con ) >= 19 ? $con : "\x21" );
 
+			if ( ! headers_sent() ) {
+				header( 'ETag: "' . substr( md5( strlen( $this->image_data ) . '.' . time() ), 0, 16 ) . '"' );
+				header( 'Content-Length: ' . strlen( $this->image_data ) );
+			}
+
 			return $this->image_data;
 		}
 
