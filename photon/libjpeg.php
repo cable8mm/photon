@@ -270,7 +270,7 @@ function get_jpeg_quality( &$buff, $buff_len = null ) {
 	for( $i = 0; $i <= 100; $i++ ) {
 		if ( ( $qvalue < $tables[$table]['hash'][$i] ) && ( $sum < $tables[$table]['sums'][$i] ) )
 			continue;
-		return $i;
+		return min( $i+1, 100 );
 	}
 	return 100; // go with a safe value
 }
