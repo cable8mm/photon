@@ -744,7 +744,11 @@ function compress_image_jpg( $filename, $image, $quality ) {
 		! ( isset( $_GET['quality'] ) && 100 == intval( $_GET['quality'] ) ) ) {
 		$content_type = 'image/webp';
 		exifrotate( $filename, $image, true );
-		exec( CWEBP . " -quiet -m 2 -q $quality -o $filename $filename" );
+		if ( Gmagick::IMGTYPE_GRAYSCALE == $image->getimagetype() ) {
+			exec( CWEBP . " --lossless -quiet -m 2 -q $quality -o $filename $filename" );
+		} else {
+			exec( CWEBP . " -quiet -m 2 -q $quality -o $filename $filename" );
+		}
 	} else if ( false !== JPEGOPTIM ) {
 		$strip = false;
 		if ( isset( $_GET['strip'] ) ) {
