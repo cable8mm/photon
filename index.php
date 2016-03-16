@@ -690,6 +690,19 @@ function serve_file( $url, $content_type, $filename, $bytes_saved ) {
 	fpassthru( $fp );
 }
 
+function convert_to_webp( $filename, $cwebp_args = '' ) {
+	$transformed = tempnam( '/dev/shm/', 'tran-webp-' );
+	$cmd = CWEBP . " -quiet $cwebp_args -o $transformed $filename";
+	exec( $cmd, $o, $e );
+	if ( $e == 0 && file_exists( $transformed ) ) {
+		rename( $transformed, $filename );
+		return true;
+	} else {
+		@unlink( $transformed );
+		return false;
+	}
+}
+
 /**
  * Compresses the PNG image using the best option available
  *
@@ -705,14 +718,14 @@ function compress_image_png( $filename, $quality ) {
 			exec( OPTIPNG . " $filename" );
 		} else if ( false !== CWEBP && ( defined( 'CWEBP_PNG' ) && true === CWEBP_PNG ) &&
 				isset( $_SERVER['HTTP_ACCEPT'] ) && false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) ) {
-			$content_type = 'image/webp';
-			exec( CWEBP . " -quiet --lossless $filename -o $filename" );
+			if ( convert_to_webp( $filename, '--lossless' ) )
+				$content_type = 'image/webp';
 		}
 	} else {
 		if ( false !== CWEBP && ( defined( 'CWEBP_PNG' ) && true === CWEBP_PNG ) &&
-			isset( $_SERVER['HTTP_ACCEPT'] ) && false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) ) {
+			isset( $_SERVER['HTTP_ACCEPT'] ) && false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) &&
+			convert_to_webp( $filename, "-q $quality -alpha_q 100" ) ) {
 			$content_type = 'image/webp';
-			exec( CWEBP . " -quiet -q $quality -alpha_q 100 $filename -o $filename" );
 		} else if ( false !== PNGQUANT ) {
 			exec( PNGQUANT . ' --speed 5 --quality=' . $quality . "-100 -f -o $filename $filename" );
 			if ( false !== OPTIPNG ) exec( OPTIPNG . " -o1 $filename" );
@@ -742,12 +755,16 @@ function compress_image_jpg( $filename, $image, $quality ) {
 	if ( false !== CWEBP && ( defined( 'CWEBP_JPEG' ) && true === CWEBP_JPEG ) &&
 		isset( $_SERVER['HTTP_ACCEPT'] ) && false !== strpos( $_SERVER['HTTP_ACCEPT'], 'image/webp' ) &&
 		! ( isset( $_GET['quality'] ) && 100 == intval( $_GET['quality'] ) ) ) {
-		$content_type = 'image/webp';
 		exifrotate( $filename, $image, true );
-		if ( Gmagick::IMGTYPE_GRAYSCALE == $image->getimagetype() ) {
-			exec( CWEBP . " --lossless -quiet -m 2 -q $quality -o $filename $filename" );
+		$cwebp_args = "-m 2 -q $quality";
+		if ( Gmagick::IMGTYPE_GRAYSCALE == $image->getimagetype() )
+			$cwebp_args .= ' --lossless';
+
+		if ( convert_to_webp( $filename, $cwebp_args ) ) {
+			$content_type = 'image/webp';
 		} else {
-			exec( CWEBP . " -quiet -m 2 -q $quality -o $filename $filename" );
+			// we strip "info" because we have already called 'exifrotate'
+			jpegoptim( $filename, 'info' );
 		}
 	} else if ( false !== JPEGOPTIM ) {
 		$strip = false;
