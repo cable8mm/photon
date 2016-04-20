@@ -270,13 +270,6 @@ class Image_Processor {
 			$this->image->setimagetype( Gmagick::IMGTYPE_PALETTE );
 		}
 
-		$this->image->setimageformat( 'PNG' );
-		$this->clear_and_normalize_profile();
-		$this->image->writeimage( $output );
-
-		if ( $this->send_bytes_saved )
-			$o_size = filesize( $output );
-
 		if ( $this->quality ) {
 			if ( 100 == $this->quality )
 				$this->_CWEBP_LOSSLESS = true;
@@ -284,6 +277,14 @@ class Image_Processor {
 		} else {
 			$this->quality = $this->_PNG_MAX_QUALITY;
 		}
+
+		$this->image->setcompressionquality( $this->quality );
+		$this->image->setimageformat( 'PNG' );
+		$this->clear_and_normalize_profile();
+		$this->image->writeimage( $output );
+
+		if ( $this->send_bytes_saved )
+			$o_size = filesize( $output );
 
 		if ( $this->webp_supported() && $this->cwebp( $output ) ) {
 			$this->mime_type = 'image/webp';
