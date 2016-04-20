@@ -58,6 +58,9 @@ define( 'PNG_MAX_QUALITY', 80 );
 // The 'w' and 'h' parameter are processed distinctly
 define( 'ALLOW_DIMS_CHAINING', true );
 
+// Strip all meta data from WebP images by default
+define( 'CWEBP_DEFAULT_META_STRIP', 'all' );
+
 // You can override this by defining it in config.php
 if ( ! defined( 'UPSCALE_MAX_PIXELS' ) )
 	define( 'UPSCALE_MAX_PIXELS', 2000 );

@@ -23,6 +23,7 @@ class Image_Processor {
 	private $_CWEBP;
 
 	private $_CWEBP_LOSSLESS;
+	private $_CWEBP_DEFAULT_META_STRIP;
 	private $_DISABLE_IMAGE_OPTIMIZATIONS;
 	private $_ALLOW_DIMS_CHAINING;
 
@@ -76,6 +77,10 @@ class Image_Processor {
 
 		// Whether the image processor produces lossless WebP images or not
 		$this->_CWEBP_LOSSLESS = defined( 'CWEBP_LOSSLESS' ) ? CWEBP_LOSSLESS : false;
+
+		// The meta data to strip from WebP images by default. Passing the request parameter
+		// 'strip=all|info|color|none' will override this setting.
+		$this->_CWEBP_DEFAULT_META_STRIP = defined( 'CWEBP_DEFAULT_META_STRIP' ) ? CWEBP_DEFAULT_META_STRIP : false;
 
 		// Whether the class will process all the 'w' and 'h' query arguments or just the first one.
 		// For example, if the query args are 'w=100&h=150' then, without chaining, only the first 'w' parameter
@@ -162,7 +167,7 @@ class Image_Processor {
 		$cmd = "{$this->_CWEBP} -quiet -q {$this->quality}";
 		if ( $this->_CWEBP_LOSSLESS )
 			$cmd .= ' -lossless';
-		$strip = isset( $_GET['strip'] ) ? $_GET['strip'] : false;
+		$strip = isset( $_GET['strip'] ) ? $_GET['strip'] : $this->_CWEBP_DEFAULT_META_STRIP;
 		switch ( $strip ) {
 			case 'all':
 				$cmd .= ' -metadata none';
