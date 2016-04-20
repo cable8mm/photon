@@ -184,58 +184,16 @@ class Jpeg_Image {
 			), // single
 		); // tables
 		$headers = $this->get_jpeg_header_data( $image_data );
-		$x_res = 0;
-		$y_res = 0;
+		$width = 0;
+		$height = 0;
 		$quality = -1;
 
 		foreach ( (array)$headers as $header ) {
-			if ( ( 'all' == $return_value ) && ( strlen( $header->SegData ) >=4 ) ) {
-				if ( 'Exif' == substr( $header->SegData, 0, 4 ) && 0x00 == ord( $header->SegData[4] ) && 0x00 == ord( $header->SegData[5] ) ) {
-					if ( ( 0x49 == ord( $header->SegData[6] ) ) && ( 0x49 == ord( $header->SegData[7] ) ) )		// little-endian
-						$intel = true;
-					elseif ( ( 0x4d == ord( $header->SegData[6] ) ) && ( 0x4d == ord( $header->SegData[7] ) ) )	// big-endian
-						$intel = false;
-					else
-						continue;
-
-					// check for the answer to the universe, in which ever bit format
-					if ( 42 !== $this->get_value_by_endianness( mb_strcut( $header->SegData, 8, 2 ), $intel ) )
-						continue;
-
-					$base_addr = $this->get_value_by_endianness( mb_strcut( $header->SegData, 10, 4 ), $intel );
-					$base_addr += 6; // add first 6 bytes of header added to address pointer ('Exif\0\0')
-					$num_entries = $this->get_value_by_endianness( mb_strcut( $header->SegData, $base_addr, 2 ), $intel );
-					$base_addr += 2;
-					$addr = $base_addr;
-
-					while ( ( $addr < $base_addr + ( $num_entries * 12 ) ) && ( ! $x_res || ! $y_res ) ) {
-						$tag_id = $this->get_value_by_endianness( mb_strcut( $header->SegData, $addr, 2 ), $intel );
-						// check for X or Y Resolution settings
-						if ( ( 282 == $tag_id ) || ( 283 == $tag_id ) ) {
-							$data_type = $this->get_value_by_endianness( mb_strcut( $header->SegData, $addr + 2, 2 ), $intel );
-							if ( 5 !== $data_type ) {
-								$addr += 12;
-								continue;
-							}
-							$components = $this->get_value_by_endianness( mb_strcut( $header->SegData, $addr + 4, 4 ), $intel );
-							$ptr = $this->get_value_by_endianness( mb_strcut( $header->SegData, $addr + 8, 4 ), $intel );
-							$ptr += 6;	// add first 6 bytes of header added to address pointer
-							$numer = $this->get_value_by_endianness( mb_strcut( $header->SegData, $ptr, 4 ), $intel );
-							$denom = $this->get_value_by_endianness( mb_strcut( $header->SegData, $ptr + 4, 4 ), $intel );
-							if ( 282 == $tag_id  )
-								if ( $denom )
-									$x_res = $numer / $denom;
-							if ( 283 == $tag_id )
-								if ( $denom )
-									$y_res = $numer / $denom;
-						}
-						$addr += 12;
-					}
-				} else if ( ( 192 <= $header->SegType && 207 >= $header->SegType ) &&
-						( 196 != $header->SegType && 200 != $header->SegType && 204 != $header->SegType ) ) {
-					$y_res = ( ord( $header->SegData[1] ) << 8 ) | ord( $header->SegData[2] );
-					$x_res = ( ord( $header->SegData[3] ) << 8 ) | ord( $header->SegData[4] );
-				}
+			if ( ( 'all' == $return_value ) && ( strlen( $header->SegData ) >=4 ) &&
+				( 192 <= $header->SegType && 207 >= $header->SegType ) &&
+				( 196 != $header->SegType && 200 != $header->SegType && 204 != $header->SegType ) ) {
+				$height = ( ord( $header->SegData[1] ) << 8 ) | ord( $header->SegData[2] );
+				$width = ( ord( $header->SegData[3] ) << 8 ) | ord( $header->SegData[4] );
 			}
 
 			if ( ( -1 == $quality ) && ( 'DQT' == $header->SegName ) ) {
@@ -265,7 +223,7 @@ class Jpeg_Image {
 					break;
 				}
 			} else if ( ( ( -1 != $quality ) && 'quality' == $return_value ) ||
-						( ( -1 != $quality ) && ( 0 != $x_res ) && ( 0 != $y_res ) ) ) {
+						( ( -1 != $quality ) && ( 0 != $width ) && ( 0 != $height ) ) ) {
 				// we have what we came for, bail
 				break;
 			}
@@ -274,10 +232,10 @@ class Jpeg_Image {
 			return ( -1 == $quality ) ? $this->_JPG_MAX_QUALITY : $quality;
 		else
 			return array(
-						'x'=> $x_res,
-						'y'=> $y_res,
-						'q'=> ( -1 == $quality ) ? $this->_JPG_MAX_QUALITY : $quality,
-					);
+					'x'=> $width,
+					'y'=> $height,
+					'q'=> ( -1 == $quality ) ? $this->_JPG_MAX_QUALITY : $quality,
+				);
 	}
 
 } // class Jpeg_Image
