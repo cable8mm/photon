@@ -741,7 +741,11 @@ class Image_Processor {
 		}
 
 		$this->image->cropimage( $crop_w, $crop_h, $s_x, $s_y );
-		$this->image->scaleimage( $new_w, $new_h );
+
+		if ( 'image/png' == $this->mime_type && 1 < $this->image->getimagechanneldepth( Gmagick::CHANNEL_OPACITY ) )
+			$this->image->resizeimage( $new_w, $new_h, Gmagick::FILTER_LANCZOS, 1.0 );
+		else
+			$this->image->scaleimage( $new_w, $new_h );
 
 		$this->image_width = $new_w;
 		$this->image_height = $new_h;
@@ -844,7 +848,11 @@ class Image_Processor {
 			return true;
 		}
 
-		$this->image->scaleimage( $new_w, $new_h );
+		if ( 'image/png' == $this->mime_type && 1 < $this->image->getimagechanneldepth( Gmagick::CHANNEL_OPACITY ) )
+			$this->image->resizeimage( $new_w, $new_h, Gmagick::FILTER_LANCZOS, 1.0 );
+		else
+			$this->image->scaleimage( $new_w, $new_h );
+
 		$this->image->cropimage( $crop_w, $crop_h, $s_x, $s_y );
 
 		$this->image_width = $crop_w;
@@ -894,7 +902,11 @@ class Image_Processor {
 			return true;
 		}
 
-		$this->image->scaleimage( $new_w, $new_h, true );
+		if ( 'image/png' == $this->mime_type && 1 < $this->image->getimagechanneldepth( Gmagick::CHANNEL_OPACITY ) )
+			$this->image->resizeimage( $new_w, $new_h, Gmagick::FILTER_LANCZOS, 1.0, true );
+		else
+			$this->image->scaleimage( $new_w, $new_h, true );
+
 		$this->image_width = $new_w;
 		$this->image_height = $new_h;
 		return true;
@@ -919,7 +931,11 @@ class Image_Processor {
 			return true;
 		}
 
-		$this->image->scaleimage( $new_w, $new_h );
+		if ( 'image/png' == $this->mime_type && 1 < $this->image->getimagechanneldepth( Gmagick::CHANNEL_OPACITY ) )
+			$this->image->resizeimage( $new_w, $new_h, Gmagick::FILTER_LANCZOS, 1.0 );
+		else
+			$this->image->scaleimage( $new_w, $new_h );
+
 		$this->image_width = $new_w;
 		$this->image_height = $new_h;
 		return true;
@@ -944,7 +960,11 @@ class Image_Processor {
 			return true;
 		}
 
-		$this->image->scaleimage( $new_w, $new_h );
+		if ( 'image/png' == $this->mime_type && 1 < $this->image->getimagechanneldepth( Gmagick::CHANNEL_OPACITY ) )
+			$this->image->resizeimage( $new_w, $new_h, Gmagick::FILTER_LANCZOS, 1.0 );
+		else
+			$this->image->scaleimage( $new_w, $new_h );
+
 		$this->image_width = $new_w;
 		$this->image_height = $new_h;
 		return true;
@@ -1133,7 +1153,10 @@ class Image_Processor {
 			return false;
 		}
 
-		$this->image->scaleimage( $end_w, $end_h, true );
+		if ( 'image/png' == $this->mime_type && 1 < $this->image->getimagechanneldepth( Gmagick::CHANNEL_OPACITY ) )
+			$this->image->resizeimage( $end_w, $end_h, Gmagick::FILTER_LANCZOS, 1.0, true );
+		else
+			$this->image->scaleimage( $end_w, $end_h, true );
 
 		$new_w = $this->image->getimagewidth();
 		$new_h = $this->image->getimageheight();
