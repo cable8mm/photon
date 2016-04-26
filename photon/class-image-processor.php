@@ -144,6 +144,23 @@ class Image_Processor {
 		}
 	}
 
+	private function optipng( $file, $flags = '' ) {
+		$transformed = tempnam( '/dev/shm/', 'tran-opti-' );
+		if ( ! copy( $file, $transformed ) ) {
+			@unlink( $transformed );
+			return;
+		}
+
+		$cmd = $this->_OPTIPNG . " $flags $transformed >/dev/null 2>&1";
+		exec( $cmd, $o, $e );
+
+		if ( $e == 0 && file_exists( $transformed ) ) {
+			rename( $transformed, $file );
+		} else {
+			@unlink( $transformed );
+		}
+	}
+
 	private function jpegtran( $file ) {
 		$transformed = tempnam( '/dev/shm/', 'tran-post-' );
 		$cmd = $this->_JPEGTRAN . " -copy all -optimize -progressive -outfile $transformed $file 2>&1";
@@ -208,10 +225,16 @@ class Image_Processor {
 	}
 
 	private function jpegoptim( $file ) {
+		$transformed = tempnam( '/dev/shm/', 'tran-jopt-' );
+		if ( ! copy( $file, $transformed ) ) {
+			@unlink( $transformed );
+			return false;
+		}
+
 		$strip = false;
 		if ( isset( $_GET['strip'] ) ) {
 			$strip = $_GET['strip'];
-			$this->exif_rotate( $file, $strip );
+			$this->exif_rotate( $transformed, $strip );
 		}
 
 		$cmd = $this->_JPEGOPTIM . ' -T0.0 --all-progressive';
@@ -226,8 +249,16 @@ class Image_Processor {
 				$cmd .= ' -f --strip-icc';
 				break;
 		}
-		$cmd .= " -p $file";
-		exec( $cmd );
+		$cmd .= " -p $transformed";
+		exec( $cmd, $o, $e );
+
+		if ( $e == 0 && file_exists( $transformed ) ) {
+			rename( $transformed, $file );
+			return true;
+		} else {
+			@unlink( $transformed );
+			return false;
+		}
 	}
 
 	private function exif_rotate( $file, $strip ) {
@@ -290,13 +321,12 @@ class Image_Processor {
 			$this->mime_type = 'image/webp';
 		} else if ( $this->_PNGQUANT ) {
 			exec( $this->_PNGQUANT . " --speed 5 --quality={$this->quality}-100 -f -o $output $output" );
-			if ( $this->_OPTIPNG ) {
-				exec( $this->_OPTIPNG . " -o1 $output >/dev/null 2>&1" );
-			}
+			if ( $this->_OPTIPNG )
+				$this->optipng( $output, '-o1' );
 		} else if ( $this->_PNGCRUSH ) {
 			$this->pngcrush( $output );
 		} else if ( $this->_OPTIPNG )  {
-			exec( $this->_OPTIPNG . " $output >/dev/null 2>&1" );
+			$this->optipng( $output );
 		}
 
 		if ( $this->send_bytes_saved ) {
@@ -679,20 +709,6 @@ class Image_Processor {
 			default:
 				$this->compress_and_send_jpeg();
 				break;
-		}
-	}
-
-	public function send_original() {
-		switch ( $this->mime_type ) {
-			case 'image/gif':
-				$this->send_headers( strlen( $this->image_data ) );
-				die( $this->image_data );
-			case 'image/png':
-				$this->compress_and_send_png();
-				exit();
-			default:
-				$this->compress_and_send_jpeg();
-				exit();
 		}
 	}
 
