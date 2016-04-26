@@ -800,7 +800,7 @@ class Image_Processor {
 		$new_h = $requested_h = intval( $height );
 		$this->upscale = true;
 
-		if ( 0 == $new_w || 0 == $new_h ) {
+		if ( 0 >= $new_w || 0 >= $new_h ) {
 			$new_w = $this->image_width;    // setting these to the current image dims and
 			$new_h = $this->image_height;   // upscale to false causes the original image
 			$this->upscale = false;         // to be sent to the client
