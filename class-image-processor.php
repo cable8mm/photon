@@ -815,6 +815,10 @@ class Image_Processor {
 			// If the original and new images are proportional (no cropping needed)
 			if ( $ratio_orig == $ratio_end ) {
 				$ratio = $this->image_width / $new_w;
+				if ( 0 == $ratio ) {
+					$this->upscale = false;
+					return false;
+				}
 				$crop_w = $new_w;
 				$crop_h = $new_h = round( $this->image_height / $ratio );
 				$s_x = $s_y = 0;
@@ -822,6 +826,10 @@ class Image_Processor {
 			// If we need to crop off the sides
 			elseif ( $ratio_orig > $ratio_end ) {
 				$ratio = $this->image_height / $new_h;
+				if ( 0 == $ratio ) {
+					$this->upscale = false;
+					return false;
+				}
 				$new_w = round( $this->image_width / $ratio );
 				$s_x = floor( ( $new_w - $requested_w ) / 2 );
 				$s_y = 0;
@@ -831,6 +839,10 @@ class Image_Processor {
 			// If we need to crop off the top/bottom
 			elseif ( $ratio_orig < $ratio_end ) {
 				$ratio = $this->image_width / $new_w;
+				if ( 0 == $ratio ) {
+					$this->upscale = false;
+					return false;
+				}
 				$new_h = round( $this->image_height / $ratio );
 				$s_x = 0;
 				$s_y = floor( ( $new_h - $requested_h ) / 2 );
@@ -919,6 +931,9 @@ class Image_Processor {
 			$width = intval( $width );
 
 		$ratio = $this->image_width / $width;
+		if ( 0 == $ratio )
+			return false;
+
 		$new_w = round( $this->image_width / $ratio );
 		$new_h = round( $this->image_height / $ratio );
 
@@ -948,6 +963,9 @@ class Image_Processor {
 			$height = intval( $height );
 
 		$ratio = $this->image_height / $height;
+		if ( 0 == $ratio )
+			return false;
+		
 		$new_w = round( $this->image_width / $ratio );
 		$new_h = round( $this->image_height / $ratio );
 
