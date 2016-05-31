@@ -798,17 +798,12 @@ class Image_Processor {
 	public function resize( $width, $height ) {
 		$new_w = $requested_w = intval( $width );
 		$new_h = $requested_h = intval( $height );
-		$this->upscale = true;
 
 		if ( 0 >= $new_w || 0 >= $new_h ) {
-			$new_w = $this->image_width;    // setting these to the current image dims and
-			$new_h = $this->image_height;   // upscale to false causes the original image
-			$this->upscale = false;         // to be sent to the client
+			return false;
 		} elseif ( ( ( $new_w > $this->image_width ) && ( $new_w > $this->_UPSCALE_MAX_PIXELS ) ) ||
 				( ( $new_h > $this->image_height ) && ( $new_h > $this->_UPSCALE_MAX_PIXELS ) ) ) {
-			$new_w = $this->image_width;
-			$new_h = $this->image_height;
-			$this->upscale = false;
+			return false;
 		} elseif ( 'image/gif' != $this->mime_type ) { // the GIF class processes internally
 			$ratio_orig = $this->image_width / $this->image_height;
 			$ratio_end = $new_w / $new_h;
@@ -816,9 +811,9 @@ class Image_Processor {
 			if ( $ratio_orig == $ratio_end ) {
 				$ratio = $this->image_width / $new_w;
 				if ( 0 == $ratio ) {
-					$this->upscale = false;
 					return false;
 				}
+				$this->upscale = true;
 				$crop_w = $new_w;
 				$crop_h = $new_h = round( $this->image_height / $ratio );
 				$s_x = $s_y = 0;
@@ -827,9 +822,9 @@ class Image_Processor {
 			elseif ( $ratio_orig > $ratio_end ) {
 				$ratio = $this->image_height / $new_h;
 				if ( 0 == $ratio ) {
-					$this->upscale = false;
 					return false;
 				}
+				$this->upscale = true;
 				$new_w = round( $this->image_width / $ratio );
 				$s_x = floor( ( $new_w - $requested_w ) / 2 );
 				$s_y = 0;
@@ -840,9 +835,9 @@ class Image_Processor {
 			elseif ( $ratio_orig < $ratio_end ) {
 				$ratio = $this->image_width / $new_w;
 				if ( 0 == $ratio ) {
-					$this->upscale = false;
 					return false;
 				}
+				$this->upscale = true;
 				$new_h = round( $this->image_height / $ratio );
 				$s_x = 0;
 				$s_y = floor( ( $new_h - $requested_h ) / 2 );
@@ -851,8 +846,8 @@ class Image_Processor {
 			}
 		}
 
-		// checks params and skips this transformation if it is found to be out of bounds
-		if ( ! $this->valid_request( $new_w, $new_h ) )
+		// checks dims and skips this transformation if they are found to be out of bounds
+		if ( ! isset( $crop_w ) || ! isset( $crop_h ) || ! $this->valid_request( $crop_w, $crop_h ) )
 			return false;
 
 		if ( 'image/gif' == $this->mime_type ) {
@@ -965,7 +960,7 @@ class Image_Processor {
 		$ratio = $this->image_height / $height;
 		if ( 0 == $ratio )
 			return false;
-		
+
 		$new_w = round( $this->image_width / $ratio );
 		$new_h = round( $this->image_height / $ratio );
 
@@ -1203,3 +1198,4 @@ class Image_Processor {
 } // class Image_Processor
 
 } // class_exists
+
