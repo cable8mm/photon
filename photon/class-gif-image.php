@@ -470,7 +470,7 @@ require_once ( dirname( __FILE__ ) . '/class-image-effect.php' );
 			// perform the post-processing functions
 			foreach ( $this->post_process_actions as $action ) {
 				if ( method_exists( $this->img_effect, $action[ 'func_name' ] ) )
-					$this->img_effect->$action[ 'func_name' ]( $img_s, $action[ 'params' ] );
+					$this->img_effect->{$action[ 'func_name' ]}( $img_s, $action[ 'params' ] );
 			}
 
 			ob_start();
@@ -835,7 +835,7 @@ require_once ( dirname( __FILE__ ) . '/class-image-effect.php' );
 			$cropped = false;
 			// do the pre-processing functions
 			foreach ( $this->pre_process_actions as $action ) {
-				$this->$action[ 'func_name' ]( $action[ 'params' ] );
+				$this->{$action[ 'func_name' ]}( $action[ 'params' ] );
 				if ( 'crop' == $action[ 'func_name' ] || 'crop_offset' == $action[ 'func_name' ] )
 					$cropped = true;
 			}
