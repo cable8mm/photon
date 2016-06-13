@@ -869,44 +869,41 @@ class Image_Processor {
 	public function fit( $width, $height ) {
 		$new_w = $requested_w = abs( intval( $width ) );
 		$new_h = $requested_h = abs( intval( $height ) );
-		$s_x = $s_y = 0;
 
 		// we do not allow both new width and height to be larger at the same time
-		if ( ! $requested_w || ! $requested_h || ( $this->image_width < $requested_w && $this->image_height < $requested_h ) ) {
-			$new_w = $this->image_width;  // setting these to the current image dims causes
-			$new_h = $this->image_height; // the original image to be sent to the client
+		if ( ! $requested_w || ! $requested_h ||
+			( $this->image_width < $requested_w && $this->image_height < $requested_h ) ) {
+			return false;
+		}
+
+		if ( 'image/gif' == $this->mime_type ) { // the GIF class processes internally
+			$this->image->add_function( 'fit_in_box', ( $requested_w . ',' . $requested_h ) );
+			return true;
+		}
+
+		$original_aspect = $this->image_width / $this->image_height;
+		$new_aspect = $requested_w / $requested_h;
+		if ( $original_aspect >= $new_aspect ) {
+			$new_h = $requested_h;
+			$new_w = round( $this->image_width / ( $this->image_height / $requested_h ) );
+			// check we haven't overstepped the width
+			if ( $new_w > $requested_w ) {
+				$new_w = $requested_w;
+				$new_h = round( $this->image_height / ( $this->image_width / $requested_w ) );
+			}
 		} else {
-			if ( 'image/gif' != $this->mime_type ) { // the GIF class calcs internally
-				$original_aspect = $this->image_width / $this->image_height;
-				$new_aspect = $requested_w / $requested_h;
-				if ( $original_aspect >= $new_aspect ) {
-					$new_h = $requested_h;
-					$new_w = round( $this->image_width / ( $this->image_height / $requested_h ) );
-					// check we haven't overstepped the width
-					if ( $new_w > $requested_w ) {
-						$new_w = $requested_w;
-						$new_h = round( $this->image_height / ( $this->image_width / $requested_w ) );
-					}
-				} else {
-					$new_w = $requested_w;
-					$new_h = round( $this->image_height / ( $this->image_width / $requested_w ) );
-					// check we haven't overstepped the height
-					if ( $new_h > $requested_h ) {
-						$new_h = $requested_h;
-						$new_w = round( $this->image_width / ( $this->image_height / $requested_h ) );
-					}
-				}
+			$new_w = $requested_w;
+			$new_h = round( $this->image_height / ( $this->image_width / $requested_w ) );
+			// check we haven't overstepped the height
+			if ( $new_h > $requested_h ) {
+				$new_h = $requested_h;
+				$new_w = round( $this->image_width / ( $this->image_height / $requested_h ) );
 			}
 		}
 
 		// checks params and skips this transformation if it is found to be out of bounds
 		if ( ! $this->valid_request( $new_w, $new_h ) )
 			return false;
-
-		if ( 'image/gif' == $this->mime_type ) {
-			$this->image->add_function( 'fit_in_box', ( $requested_w . ',' . $requested_h ) );
-			return true;
-		}
 
 		if ( 'image/png' == $this->mime_type && 1 < $this->image->getimagechanneldepth( Gmagick::CHANNEL_OPACITY ) )
 			$this->image->resizeimage( $new_w, $new_h, Gmagick::FILTER_LANCZOS, 1.0, true );
