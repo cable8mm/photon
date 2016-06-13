@@ -183,7 +183,19 @@ class Jpeg_Image {
 				), // sums
 			), // single
 		); // tables
+		
 		$headers = $this->get_jpeg_header_data( $image_data );
+		if ( ! $headers ) {
+			if ( 'quality' == $return_value )
+				return $this->_JPG_MAX_QUALITY;
+			else
+				return array(
+						'x'=> 0,
+						'y'=> 0,
+						'q'=> $this->_JPG_MAX_QUALITY,
+					);
+		}
+
 		$width = 0;
 		$height = 0;
 		$quality = -1;
