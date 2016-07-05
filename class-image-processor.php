@@ -473,6 +473,20 @@ class Image_Processor {
 		}
 	}
 
+	private function get_memory_limit() {
+		$mem_limit = ini_get( 'memory_limit' );
+		if ( preg_match( '/^[0-9]+G$/', $mem_limit ) )
+			return intval( str_replace( 'G', '', $mem_limit ) ) * 1024 * 1024 * 1024;
+		else if ( preg_match( '/^[0-9]+M$/', $mem_limit ) )
+			return intval( str_replace( 'M', '', $mem_limit ) ) * 1024 * 1024;
+		else if ( preg_match( '/^[0-9]+K$/', $mem_limit ) )
+			return intval( str_replace( 'K', '', $mem_limit ) ) * 1024;
+		else if ( 0 < intval( $mem_limit ) )
+			return intval( $mem_limit );
+		else
+			return 128 * 1024 * 1024; // default setting for the PHP memory limit
+	}
+
 	private function acceptable_dimensions() {
 		if ( 24 > strlen( $this->image_data ) )
 			return false;
@@ -661,11 +675,17 @@ class Image_Processor {
 				if ( 'image/gif' == $this->mime_type ) {
 					$this->image->add_function( $arg, $val );
 				} else {
-					$effect = new Image_Effect( 'Gmagick', $this->mime_type );
-					if ( method_exists( $effect, $arg ) ) {
-						$effect->$arg( $this->image, $val );
-						if ( is_array( $effect->processed ) )
-							$this->processed = array_merge( $this->processed, $effect->processed );
+					// Due to the fact that these functions require memory intensive conversions back and forth
+					// between Gmagick and GD, we only allow them to be executed if the (roughly estimated)
+					// memory requirement for executing them will be less than the current script memory limit
+					$est_gd_size = $this->image_width * $this->image_height * 4 * 1.7;
+					if ( memory_get_usage( true ) + $est_gd_size < $this->get_memory_limit() ) {
+						$effect = new Image_Effect( 'Gmagick', $this->mime_type );
+						if ( method_exists( $effect, $arg ) ) {
+							$effect->$arg( $this->image, $val );
+							if ( is_array( $effect->processed ) )
+								$this->processed = array_merge( $this->processed, $effect->processed );
+						}
 					}
 				}
 				unset( $args[$arg] );
@@ -681,8 +701,15 @@ class Image_Processor {
 
 			case 'ulb':
 				// unletterboxing is not available for GIF images
-				if ( 'image/gif' != $this->mime_type && 'true' == $val && $this->unletterbox() )
-					$this->processed[] = 'unletterbox';
+				if ( 'image/gif' != $this->mime_type && 'true' == $val ) {
+					// Due to the fact that these functions require memory intensive conversions back and forth
+					// between Gmagick and GD, we only allow unletterboxing if the (roughly estimated) memory
+					// requirement will be less than the script memory limit
+					$est_gd_size = $this->image_width * $this->image_height * 4 * 1.7;
+					if ( memory_get_usage( true ) + $est_gd_size < $this->get_memory_limit() && $this->unletterbox() ) {
+						$this->processed[] = 'unletterbox';
+					}
+				}
 
 				unset( $args['ulb'] );
 				break;
