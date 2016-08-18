@@ -155,7 +155,7 @@ $raw_data = '';
 $raw_data_size = 0;
 $fetched = fetch_raw_data( $url );
 if ( ! $fetched || empty( $raw_data ) )
-	httpdie( '504 Gateway Timeout', 'We cannot complete this request, remote data could not be fetched' );
+	httpdie( '404 Not Found', 'We cannot complete this request, remote data could not be fetched' );
 
 foreach ( $disallowed_file_headers as $file_header ) {
 	if ( substr( $raw_data, 0, strlen( $file_header ) ) == $file_header )
