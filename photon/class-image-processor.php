@@ -568,7 +568,7 @@ class Image_Processor {
 	public function get_transformation_args() {
 		$retA = array();
 		foreach( $_GET as $arg => $val ) {
-			if ( ! is_numeric( $arg ) && in_array( $arg, self::$allowed_functions ) ) {
+			if ( ! is_numeric( $arg ) && in_array( $arg, self::$allowed_functions, true ) ) {
 				$retA[ $arg ] = $val;
 			}
 		}
