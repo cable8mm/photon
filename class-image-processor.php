@@ -1065,9 +1065,9 @@ class Image_Processor {
 
 		// confirm the image is letterboxed and then sample the color
 		// and use that color to search for the dims we need to crop
-		$lb_red = null;
-		$lb_green = null;
-		$lb_blue = null;
+		$lb_red = -1;
+		$lb_green = -1;
+		$lb_blue = -1;
 
 		for ( $w = 0; $w < $this->image_width; $w++ ) {
 			$rgb = imagecolorat( $this->image, $w, 0 );
@@ -1075,89 +1075,97 @@ class Image_Processor {
 			$g = ( $rgb >> 8 ) & 0xFF;
 			$b = $rgb & 0xFF;
 
-			if ( ! $lb_red ) {
+			if ( -1 == $lb_red ) {
 				$lb_red = $r;
 			} else if ( $lb_red > $r + 1 || $lb_red < $r - 1 ) {
-				$lb_red = null;
+				$lb_red = -1;
 				break;
 			}
-			if ( ! $lb_green ) {
+			if ( -1 == $lb_green ) {
 				$lb_green = $g;
 			} else if ( $lb_green > $g + 1 || $lb_green < $g - 1 ) {
-				$lb_red = null;
+				$lb_red = -1;
 				break;
 			}
-			if ( ! $lb_blue ) {
+			if ( -1 == $lb_blue ) {
 				$lb_blue = $b;
 			} else if ( $lb_blue > $b + 1 || $lb_blue < $b - 1 ) {
-				$lb_red = null;
+				$lb_red = -1;
 				break;
 			}
 		}
-		if ( ! $lb_red || ! $lb_green || ! $lb_blue ) {
+
+		if ( 0 > $lb_red || 0 > $lb_green || 0 > $lb_blue ) {
 			$img_effect->gd_to_gmagick( $this->image );
 			return false;
 		}
 
-		$first_unmatched_line = null;
+		$first_unmatched_line = -1;
 		for ( $h = 1; $h < $this->image_height; $h++ ) {
-			$line_value = 0;
+			$tr = $tg = $tb = 0;
 			for ( $w = 0; $w < $this->image_width; $w++ ) {
 				$rgb = imagecolorat( $this->image, $w, $h );
 				$r = ( $rgb >> 16 ) & 0xFF;
 				$g = ( $rgb >> 8 ) & 0xFF;
 				$b = $rgb & 0xFF;
-
-				if ( $lb_red > $r + 5 || $lb_red < $r - 5 ) {
-					$first_unmatched_line = $h;
-					break;
-				}
-				if ( $lb_green > $g + 5 || $lb_green < $g - 5 ) {
-					$first_unmatched_line = $h;
-					break;
-				}
-				if ( $lb_blue > $b + 5 || $lb_blue < $b - 5 ) {
-					$first_unmatched_line = $h;
-					break;
-				}
+				$tr += $r;
+				$tg += $g;
+				$tb += $b;
 			}
-			if ( $first_unmatched_line )
+			$ar = $tr / $w;
+			$ag = $tg / $w;
+			$ab = $tb / $w;
+			if ( $lb_red > $ar + 10 || $lb_red < $ar - 10 ) {
+				$first_unmatched_line = $h;
 				break;
+			}
+			if ( $lb_green > $ag + 10 || $lb_green < $ag - 10 ) {
+				$first_unmatched_line = $h;
+				break;
+			}
+			if ( $lb_blue > $ab + 10 || $lb_blue < $ab - 10 ) {
+				$first_unmatched_line = $h;
+				break;
+			}
 		}
-		if ( ! $first_unmatched_line ) {
+
+		if ( 0 > $first_unmatched_line ) {
 			$img_effect->gd_to_gmagick( $this->image );
 			return false;
 		}
 
-		$last_unmatched_line = null;
+		$last_unmatched_line = -1;
 		for ( $h = $this->image_height - 1; $h >= 0; $h-- ) {
-			$line_value = 0;
+			$tr = $tg = $tb = 0;
 			for( $w = 0; $w < $this->image_width; $w++ ) {
 				$rgb = imagecolorat( $this->image, $w, $h );
 				$r = ( $rgb >> 16 ) & 0xFF;
 				$g = ( $rgb >> 8 ) & 0xFF;
 				$b = $rgb & 0xFF;
-
-				if ( $lb_red > $r + 5 || $lb_red < $r - 5 ) {
-					$last_unmatched_line = $h + 1;
-					break;
-				}
-				if ( $lb_green > $g + 5 || $lb_green < $g - 5 ) {
-					$last_unmatched_line = $h + 1;
-					break;
-				}
-				if ( $lb_blue > $b + 5 || $lb_blue < $b - 5 ) {
-					$last_unmatched_line = $h + 1;
-					break;
-				}
+				$tr += $r;
+				$tg += $g;
+				$tb += $b;
 			}
-			if ( $last_unmatched_line )
+			$ar = $tr / $w;
+			$ag = $tg / $w;
+			$ab = $tb / $w;
+			if ( $lb_red > $ar + 10 || $lb_red < $ar - 10 ) {
+				$last_unmatched_line = $h + 1;
 				break;
+			}
+			if ( $lb_green > $ag + 10 || $lb_green < $ag - 10 ) {
+				$last_unmatched_line = $h + 1;
+				break;
+			}
+			if ( $lb_blue > $ab + 10 || $lb_blue < $ab - 10 ) {
+				$last_unmatched_line = $h + 1;
+				break;
+			}
 		}
 
 		$img_effect->gd_to_gmagick( $this->image );
 
-		if ( ! $last_unmatched_line || $last_unmatched_line <= $first_unmatched_line ) {
+		if ( 0 > $last_unmatched_line || $last_unmatched_line <= $first_unmatched_line ) {
 			return false;
 		}
 
