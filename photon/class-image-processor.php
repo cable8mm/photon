@@ -1178,11 +1178,15 @@ class Image_Processor {
 	}
 
 	function letterbox( $args ) {
-		list( $end_w, $end_h, $color ) = explode( ',', $args );
-		$end_w = abs( intval( $end_w ) );
-		$end_h = abs( intval( $end_h ) );
+		$arg_arr = explode( ',', $args );
+		if ( 2 > count( $arg_arr ) )
+			return false;
 
-		if ( ! empty( $color ) ) {
+		$end_w = abs( intval( $arg_arr[0] ) );
+		$end_h = abs( intval( $arg_arr[1] ) );
+
+		if ( 3 == count( $arg_arr ) ) {
+			$color = $arg_arr[2];
 			if ( false === strpos( $color, '#' ) )
 				$color = '#' . $color;
 			if ( ! preg_match( '/^#[0-9a-fA-F]{6}$/', $color ) )
