@@ -603,7 +603,7 @@ class Image_Processor {
 
 			switch ( $arg ) {
 			case 'crop':
-				if ( strpos( $val, ',' ) ) {    // 1st-style crop (crop=x,y,w,h)
+				if ( ! is_array( $val ) && strpos( $val, ',' ) ) {    // 1st-style crop (crop=x,y,w,h)
 					$params = explode( ',', $val );
 					if ( 4 == count( $params ) && $this->crop_offset( $params[0], $params[1], $params[2], $params[3] ) )
 						$this->processed[] = 'crop_offset';
