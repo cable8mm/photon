@@ -1013,8 +1013,10 @@ class Image_Processor {
 			// Clamp to 1-10
 			$zoom = max( 1, $zoom );
 			$zoom = min( 10, $zoom );
-			// Round UP to the nearest 0.25
-			$zoom = ceil( $zoom * 4 ) / 4;
+			if ( $zoom > 3 ) {
+				// Round UP to the nearest 0.5
+				$zoom = ceil( $zoom * 2 ) / 2;
+			}
 		} else {
 			return $arguments;
 		}
@@ -1037,7 +1039,11 @@ class Image_Processor {
 				// Avoid dimensions larger than original.
 				while ( ( $new_width > $this->image_width || $new_height > $this->image_height ) && $zoom > 1 ) {
 					// Step down in increments until we have valid dims
-					$zoom -= 0.25;
+					if ( $zoom > 3 ) {
+						$zoom -= 0.5;
+					} else {
+						$zoom -= 0.1;
+					}
 					$new_width = $width * $zoom;
 					$new_height = $height * $zoom;
 				}
