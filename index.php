@@ -99,7 +99,7 @@ function httpdie( $code = '404 Not Found', $message = 'Error: 404 Not Found' ) {
 	die( $message );
 }
 
-function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 2 ) {
+function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 3 ) {
 	$ch = curl_init( $url );
 	curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, $connect_timeout );
 	curl_setopt( $ch, CURLOPT_TIMEOUT, $timeout );
