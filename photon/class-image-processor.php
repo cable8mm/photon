@@ -10,6 +10,7 @@ class Image_Processor {
 
 	private $_JPG_MAX_QUALITY;
 	private $_PNG_MAX_QUALITY;
+	private $_WEBP_MAX_QUALITY;
 	private $_UPSCALE_MAX_PIXELS;
 	private $_UPSCALE_MAX_PIXELS_GIF;
 	private $_IMAGE_MAX_WIDTH;
@@ -57,6 +58,7 @@ class Image_Processor {
 		// These constants should be defined externally to override the defaults
 		$this->_JPG_MAX_QUALITY        = defined( 'JPG_MAX_QUALITY' ) ? JPG_MAX_QUALITY : 100;
 		$this->_PNG_MAX_QUALITY        = defined( 'PNG_MAX_QUALITY' ) ? PNG_MAX_QUALITY : 100;
+		$this->_WEBP_MAX_QUALITY       = defined( 'WEBP_MAX_QUALITY' ) ? WEBP_MAX_QUALITY : 100;
 		$this->_UPSCALE_MAX_PIXELS     = defined( 'UPSCALE_MAX_PIXELS' ) ? UPSCALE_MAX_PIXELS : 1024;
 		$this->_UPSCALE_MAX_PIXELS_GIF = defined( 'UPSCALE_MAX_PIXELS_GIF' ) ? UPSCALE_MAX_PIXELS_GIF : 1024;
 		$this->_IMAGE_MAX_WIDTH        = defined( 'IMAGE_MAX_WIDTH' ) ? IMAGE_MAX_WIDTH : 20000;
@@ -181,7 +183,7 @@ class Image_Processor {
 
 	private function cwebp( $file ) {
 		$transformed = tempnam( '/dev/shm/', 'tran-webp-' );
-		$cmd = "{$this->_CWEBP} -quiet -q {$this->quality}";
+		$cmd = "{$this->_CWEBP} -quiet";
 		if ( $this->_CWEBP_LOSSLESS )
 			$cmd .= ' -lossless';
 		$strip = isset( $_GET['strip'] ) ? $_GET['strip'] : $this->_CWEBP_DEFAULT_META_STRIP;
@@ -203,7 +205,9 @@ class Image_Processor {
 				$this->exif_rotate( $file, $strip );
 			}
 			if ( ! $this->_CWEBP_LOSSLESS && Gmagick::IMGTYPE_GRAYSCALE == $this->image->getimagetype() ) {
-				$cmd .= ' -lossless';
+				// We have to increase the quality for grayscale images otherwise they are generally too degraded.
+				// This can also be fixed with the '-lossless' parameter, but that increases the size significantly.
+				$this->quality = $this->_WEBP_MAX_QUALITY;
 			}
 			$cmd .= ' -m 2';
 		} else if ( 'image/png' == $this->mime_type ) {
@@ -212,7 +216,9 @@ class Image_Processor {
 			$cmd .= ' -m 2';
 		}
 
-		$cmd .= " -o $transformed $file";
+		$this->quality = min( $this->_WEBP_MAX_QUALITY, $this->quality );
+
+		$cmd .= " -q {$this->quality} -o $transformed $file";
 		exec( $cmd, $o, $e );
 
 		if ( $e == 0 && file_exists( $transformed ) ) {
