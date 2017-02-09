@@ -54,6 +54,7 @@ $origin_domain_exceptions = apply_filters( 'origin_domain_exceptions', array() )
 
 define( 'JPG_MAX_QUALITY', 89 );
 define( 'PNG_MAX_QUALITY', 80 );
+define( 'WEBP_MAX_QUALITY', 80 );
 
 // The 'w' and 'h' parameter are processed distinctly
 define( 'ALLOW_DIMS_CHAINING', true );
