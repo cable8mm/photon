@@ -41,8 +41,6 @@ $disallowed_file_headers = apply_filters( 'disallowed_file_headers', array(
 	'8BPS',
 ) );
 
-// Expects a trailing slash
-$tmpdir = apply_filters( 'tmpdir', '/tmp/' );
 $remote_image_max_size = apply_filters( 'remote_image_max_size', 55 * 1024 * 1024 );
 
 /* Array of domains exceptions
@@ -100,63 +98,133 @@ function httpdie( $code = '404 Not Found', $message = 'Error: 404 Not Found' ) {
 	die( $message );
 }
 
-function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 3 ) {
+function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 3, $max_redirs = 3 ) {
+	// reset image data since we redirect recursively
+	$GLOBALS['raw_data'] = '';
+	$GLOBALS['raw_data_size'] = 0;
+
+	$parsed = parse_url( apply_filters( 'url', $url ) );
+	$required = array( 'scheme', 'host', 'path' );
+
+	if ( ! $parsed || count( array_intersect_key( array_flip( $required ), $parsed ) ) !== count( $required ) ) {
+		do_action( 'bump_stats', 'invalid_url' );
+		return false;
+	}
+
+	$ip   = gethostbyname( $parsed['host'] );
+	$port = getservbyname( $parsed['scheme'], 'tcp' );
+	$url  = $parsed['scheme'] . '://' . $parsed['host'] . $parsed['path'];
+
+	if ( PHOTON__ALLOW_QUERY_STRINGS && isset( $parsed['query'] ) ) {
+		$host = strtolower( $parsed['host'] );
+		if ( array_key_exists( $host, $GLOBALS['origin_domain_exceptions'] ) ) {
+			if ( $GLOBALS['origin_domain_exceptions'][$host] ) {
+				$url .= '?' . $parsed['query'];
+			}
+		}
+	}
+
+	if ( ! filter_var( $url, FILTER_VALIDATE_URL, FILTER_FLAG_SCHEME_REQUIRED | FILTER_FLAG_PATH_REQUIRED ) ) {
+		do_action( 'bump_stats', 'invalid_url' );
+		return false;
+	}
+
+	if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+		do_action( 'bump_stats', 'invalid_ip' );
+		return false;
+	}
+
+	if ( isset( $parsed['port'] ) && $parsed['port'] !== $port ) {
+		do_action( 'bump_stats', 'invalid_port' );
+		return false;
+	}
+
 	$ch = curl_init( $url );
-	curl_setopt( $ch, CURLOPT_CONNECTTIMEOUT, $connect_timeout );
-	curl_setopt( $ch, CURLOPT_TIMEOUT, $timeout );
-	curl_setopt( $ch, CURLOPT_SSL_VERIFYPEER, false );
-	curl_setopt( $ch, CURLOPT_FOLLOWLOCATION, true );
-	curl_setopt( $ch, CURLOPT_MAXREDIRS, 3 );
-	curl_setopt( $ch, CURLOPT_USERAGENT, 'Photon/1.0' );
-	curl_setopt( $ch, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS );
-	curl_setopt( $ch, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS );
-	curl_setopt( $ch, CURLOPT_WRITEFUNCTION, function( $curl_handle, $data ) {
-		global $raw_data, $raw_data_size, $remote_image_max_size;
 
-		$data_size = strlen( $data );
-		$raw_data .= $data;
-		$raw_data_size += $data_size;
+	curl_setopt_array( $ch, array(
+		CURLOPT_TIMEOUT              => $timeout,
+		CURLOPT_CONNECTTIMEOUT       => $connect_timeout,
+		CURLOPT_PROTOCOLS            => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+		CURLOPT_SSL_VERIFYPEER       => apply_filters( 'ssl_verify_peer', false ),
+		CURLOPT_SSL_VERIFYHOST       => apply_filters( 'ssl_verify_host', false ),
+		CURLOPT_FOLLOWLOCATION       => false,
+		CURLOPT_DNS_USE_GLOBAL_CACHE => false,
+		CURLOPT_RESOLVE              => array( $parsed['host'] . ':' . $port . ':' . $ip ),
+		CURLOPT_HEADERFUNCTION       => function( $ch, $header ) {
+			if ( preg_match( '/^Content-Length:\s*(\d+)$/i', rtrim( $header ), $matches ) ) {
+				if ( $matches[1] > $GLOBALS['remote_image_max_size'] ) {
+					httpdie( '400 Bad Request', 'You can only process images up to ' . $GLOBALS['remote_image_max_size'] . ' bytes.' );
+				}
+			}
 
-		if ( $raw_data_size > $remote_image_max_size )
-			httpdie( '400 Bad Request', "You can only process images up to $remote_image_max_size bytes." );
+			return strlen( $header );
+		},
+		CURLOPT_WRITEFUNCTION        => function( $ch, $data ) {
+			$bytes = strlen( $data );
+			$GLOBALS['raw_data'] .= $data;
+			$GLOBALS['raw_data_size'] += $bytes;
 
-		return $data_size;
-	} );
+			if ( $GLOBALS['raw_data_size'] > $GLOBALS['remote_image_max_size'] ) {
+				httpdie( '400 Bad Request', 'You can only process images up to ' . $GLOBALS['remote_image_max_size'] . ' bytes.' );
+			}
 
-	return curl_exec( $ch );
-}
+			return $bytes;
+		},
+	) );
 
-$parsed = parse_url( $_SERVER['REQUEST_URI'] );
-$exploded = explode( '/', $_SERVER['REQUEST_URI'] );
-$origin_domain = strtolower( $exploded[1] );
-$origin_domain_exception = array_key_exists( $origin_domain, $origin_domain_exceptions ) ? $origin_domain_exceptions[$origin_domain] : 0;
+	if ( ! curl_exec( $ch ) ) {
+		do_action( 'bump_stats', 'invalid_request' );
+		return false;
+	}
 
-$scheme = 'http' . ( array_key_exists( 'ssl', $_GET ) ? 's' : '' ) . '://';
-parse_str( ( empty( $parsed['query'] ) ? '' : $parsed['query'] ),  $_GET  );
+	$status = curl_getinfo( $ch, CURLINFO_HTTP_CODE );
+	if ( 200 == $status ) {
+		return true;
+	}
 
-$ext = strtolower( pathinfo( $parsed['path'], PATHINFO_EXTENSION ) );
+	// handle redirects
+	if ( $status >= 300 && $status <= 399 ) {
+		if ( $max_redirs > 0 ) {
+			return fetch_raw_data( curl_getinfo( $ch, CURLINFO_REDIRECT_URL ), $timeout, $connect_timeout, $max_redirs - 1 );
+		}
+		do_action( 'bump_stats', 'max_redirects_exceeded' );
+		httpdie( '400 Bad Request', 'Too many redirects' );
+	}
 
-$url = $scheme . substr( $parsed['path'], 1 );
-$url = preg_replace( '/#.*$/', '', $url );
-$url = apply_filters( 'url', $url );
-
-if ( isset( $_GET['q'] ) ) {
-	if ( $origin_domain_exception & PHOTON__ALLOW_QUERY_STRINGS ) {
-		$url .= '?' . preg_replace( '/#.*$/', '', (string) $_GET['q'] );
-		unset( $_GET['q'] );
-	} else {
-		httpdie( '400 Bad Request', 'Sorry, the parameters you provided were not valid' );
+	// handle all other errors
+	switch( $status ) {
+		case 401:
+		case 403:
+			httpdie( '403 Forbidden', 'We cannot complete this request, remote data could not be fetched' );
+			break;
+		case 404:
+		case 410:
+			httpdie( '404 File Not Found', 'We cannot complete this request, remote data could not be fetched' );
+			break;
+		case 429:
+			httpdie( '429 Too Many Requests', 'We cannot complete this request, remote data could not be fetched' );
+			break;
+		case 451:
+			httpdie( '451 Unavailable For Legal Reasons', 'We cannot complete this request, remote data could not be fetched' );
+			break;
+		default:
+			do_action( 'bump_stats', 'http_error-400-' . $status );
+			httpdie( '400 Bad Request', 'We cannot complete this request, remote server returned an unexpected status code (' . $status . ')' );
 	}
 }
 
-if ( false === filter_var( $url, FILTER_VALIDATE_URL, FILTER_FLAG_PATH_REQUIRED ) )
-	httpdie( '400 Bad Request', 'Sorry, the parameters you provided were not valid' );
-
 $raw_data = '';
 $raw_data_size = 0;
-$fetched = fetch_raw_data( $url );
-if ( ! $fetched || empty( $raw_data ) )
-	httpdie( '404 Not Found', 'We cannot complete this request, remote data could not be fetched' );
+
+$url = sprintf( '%s://%s%s',
+	array_key_exists( 'ssl', $_GET ) ? 'https' : 'http',
+	substr( parse_url( 'scheme://host' . $_SERVER['REQUEST_URI'], PHP_URL_PATH ), 1 ), // see https://bugs.php.net/bug.php?id=71112 (and #66813) 
+	isset( $_GET['q'] ) ? '?' . $_GET['q'] : ''
+);
+
+if ( ! fetch_raw_data( $url ) ) {
+	httpdie( '400 Bad Request', 'Sorry, the parameters you provided were not valid' );
+}
 
 foreach ( $disallowed_file_headers as $file_header ) {
 	if ( substr( $raw_data, 0, strlen( $file_header ) ) == $file_header )
