@@ -142,6 +142,7 @@ function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 3, $max_redirs 
 	$ch = curl_init( $url );
 
 	curl_setopt_array( $ch, array(
+		CURLOPT_USERAGENT            => 'Photon/1.0',
 		CURLOPT_TIMEOUT              => $timeout,
 		CURLOPT_CONNECTTIMEOUT       => $connect_timeout,
 		CURLOPT_PROTOCOLS            => CURLPROTO_HTTP | CURLPROTO_HTTPS,
