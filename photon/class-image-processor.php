@@ -273,8 +273,15 @@ class Image_Processor {
 		if ( ! in_array( $strip, array( 'all', 'info' ) ) )
 			return;
 
+		// If there is invalid EXIF data this will emit a warning, even
+		// when using the @ operator.  A correct approach would be to validate
+		// the EXIF data before attempting to use it.  For now, just
+		// avoiding spewing warnings.
+		$old_level = error_reporting( E_ERROR );
 		$exif = @exif_read_data( $file );
-		if ( ! isset( $exif[ 'Orientation' ] ) )
+		error_reporting( $old_level );
+
+		if ( false === $exif || ! isset( $exif[ 'Orientation' ] ) )
 			return;
 
 		$degrees = 0;
