@@ -1094,13 +1094,13 @@ class Image_Processor {
 			if ( -1 == $lb_green ) {
 				$lb_green = $g;
 			} else if ( $lb_green > $g + 1 || $lb_green < $g - 1 ) {
-				$lb_red = -1;
+				$lb_green = -1;
 				break;
 			}
 			if ( -1 == $lb_blue ) {
 				$lb_blue = $b;
 			} else if ( $lb_blue > $b + 1 || $lb_blue < $b - 1 ) {
-				$lb_red = -1;
+				$lb_blue = -1;
 				break;
 			}
 		}
