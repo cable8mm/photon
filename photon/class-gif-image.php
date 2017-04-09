@@ -626,7 +626,7 @@ require_once ( dirname( __FILE__ ) . '/class-image-effect.php' );
 			$end_h = abs( intval( $end_h ) );
 
 			// we do not allow both new width and height to be larger at the same time
-			if ( ! $end_w || ! $end_h || ( $this->int_w < $end_w && $this->int_h < $end_h ) ) {
+			if ( ! $end_w || ! $end_h || ( $this->int_w <= $end_w && $this->int_h <= $end_h ) ) {
 				$this->new_width  = $this->int_w;
 				$this->new_height = $this->int_h;
 			} else {
