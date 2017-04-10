@@ -420,13 +420,8 @@ require_once ( dirname( __FILE__ ) . '/class-image-effect.php' );
 			} else {
 				$offset_x = 0;
 				$offset_y = 0;
-				if ( $this->fit ) {
-					$n_width  = $this->new_width;
-					$n_height = $this->new_height;
-				} else {
-					$n_width  = round( $this->frame_array[$index]->width * $this->resize_ratios[0] ) ? : 1;
-					$n_height = round( $this->frame_array[$index]->height * $this->resize_ratios[1] ) ? : 1;
-				}
+				$n_width  = round( $this->frame_array[$index]->width * $this->resize_ratios[0] ) ? : 1;
+				$n_height = round( $this->frame_array[$index]->height * $this->resize_ratios[1] ) ? : 1;
 				$s_width  = $this->frame_array[$index]->width;
 				$s_height = $this->frame_array[$index]->height;
 			}
@@ -650,7 +645,6 @@ require_once ( dirname( __FILE__ ) . '/class-image-effect.php' );
 						$this->new_width = round( $this->int_w / ( $this->int_h / $end_h ) );
 					}
 				}
-				$this->fit = true;
 				$this->processed[] = 'fit_in_box';
 			}
 		}
