@@ -129,8 +129,18 @@ function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 3, $max_redirs 
 		return false;
 	}
 
-	if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 | FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+	$allowed_ip_types = array( 'flags' => FILTER_FLAG_IPV4, );
+	if ( apply_filters( 'allow_ipv6', false ) ) {
+		$allowed_ip_types['flags'] |= FILTER_FLAG_IPV6;
+	}
+
+	if ( ! filter_var( $ip, FILTER_VALIDATE_IP, $allowed_ip_types ) ) {
 		do_action( 'bump_stats', 'invalid_ip' );
+		return false;
+	}
+
+	if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) && ! apply_filters( 'allow_private_ips', false ) ) {
+		do_action( 'bump_stats', 'private_ip' );
 		return false;
 	}
 
