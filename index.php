@@ -229,7 +229,7 @@ $raw_data_size = 0;
 
 $url = sprintf( '%s://%s%s',
 	array_key_exists( 'ssl', $_GET ) ? 'https' : 'http',
-	substr( parse_url( 'scheme://host' . $_SERVER['REQUEST_URI'], PHP_URL_PATH ), 1 ), // see https://bugs.php.net/bug.php?id=71112 (and #66813) 
+	substr( parse_url( 'scheme://host' . $_SERVER['REQUEST_URI'], PHP_URL_PATH ), 1 ), // see https://bugs.php.net/bug.php?id=71112 (and #66813)
 	isset( $_GET['q'] ) ? '?' . $_GET['q'] : ''
 );
 
