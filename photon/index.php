@@ -124,7 +124,8 @@ function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 3, $max_redirs 
 		}
 	}
 
-	if ( ! filter_var( $url, FILTER_VALIDATE_URL, FILTER_FLAG_SCHEME_REQUIRED | FILTER_FLAG_PATH_REQUIRED ) ) {
+	// https://bugs.php.net/bug.php?id=64948
+	if ( ! filter_var( str_replace( '_', '-', $url ), FILTER_VALIDATE_URL, FILTER_FLAG_SCHEME_REQUIRED | FILTER_FLAG_PATH_REQUIRED ) ) {
 		do_action( 'bump_stats', 'invalid_url' );
 		return false;
 	}
