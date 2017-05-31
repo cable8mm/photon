@@ -965,8 +965,8 @@ class Image_Processor {
 		if ( 0 == $ratio )
 			return false;
 
-		$new_w = round( $this->image_width / $ratio );
-		$new_h = round( $this->image_height / $ratio );
+		$new_w = intval( $this->image_width / $ratio );
+		$new_h = intval( $this->image_height / $ratio );
 
 		// checks params and skips this transformation if it is found to be out of bounds
 		if ( ! $this->valid_request( $new_w, $new_h ) )
@@ -997,8 +997,8 @@ class Image_Processor {
 		if ( 0 == $ratio )
 			return false;
 
-		$new_w = round( $this->image_width / $ratio );
-		$new_h = round( $this->image_height / $ratio );
+		$new_w = intval( $this->image_width / $ratio );
+		$new_h = intval( $this->image_height / $ratio );
 
 		// checks params and skips this transformation if it is found to be out of bounds
 		if ( ! $this->valid_request( $new_w, $new_h ) )
