@@ -26,20 +26,29 @@ class Image_Effect {
 	}
 
 	public function gd_to_gmagick( &$image ) {
-		ob_start();
+		$tmp_name = tempnam( '/dev/shm/', 'gd-gmagick-' );
+		$file_ptr = fopen( $tmp_name, 'w' );
+		if ( false == $file_ptr ) {
+			@unlink( $tmp_name );
+			$image = new Gmagick();
+			return;
+		}
 		switch( $this->mime_type ) {
 			case 'image/gif':
-				imagegif( $image, null );
+				imagegif( $image, $file_ptr );
 				break;
 			case 'image/png':
-				imagepng( $image, null, 0 );
+				imagepng( $image, $file_ptr, 0 );
 				break;
 			default:
-				imagejpeg( $image, null, 100 );
+				imagejpeg( $image, $file_ptr, 100 );
 				break;
 		}
+		fflush( $file_ptr );
+		fclose( $file_ptr );
 		$image = new Gmagick();
-		$image->readimageblob( ob_get_clean() );
+		$image->readimage( $tmp_name );
+		@unlink( $tmp_name );
 	}
 
 	/**
