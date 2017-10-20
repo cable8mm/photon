@@ -247,6 +247,7 @@ $img_proc = new Image_Processor();
 if ( ! $img_proc )
 	httpdie( '500 Internal Server Error', 'Error 0003. Unable to load the image.' );
 
+$img_proc->use_client_hints    = false;
 $img_proc->send_nosniff_header = true;
 $img_proc->norm_color_profile  = false;
 $img_proc->send_bytes_saved    = true;
