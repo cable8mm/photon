@@ -46,6 +46,8 @@ class Image_Processor {
 	private $quality = null;
 	private $norm_color_profile = true;
 	private $send_nosniff_header = true;
+	public $use_client_hints = false;
+	private $dpr_header_value = false;
 	private $send_etag_header = false;
 	private $send_bytes_saved = false;
 	private $canonical_url = null;
@@ -131,6 +133,9 @@ class Image_Processor {
 		if ( $this->_CWEBP && 'image/gif' != $this->mime_type ) {
 			// The Vary header must be sent for all non-GIF images if WEBP is enabled
 			header( 'Vary: Accept' );
+		}
+		if ( false !== $this->dpr_header_value ) {
+			header( 'Content-DPR: ' . $this->dpr_header_value );
 		}
 	}
 
@@ -1019,23 +1024,47 @@ class Image_Processor {
 		return true;
 	}
 
-	function apply_zoom( $function_name, $arguments ) {
-		$zoom = 1;
-		if ( isset( $_GET['zoom'] ) ) {
-			$zoom = floatval( $_GET['zoom'] );
-			// Clamp to 1-10
-			$zoom = max( 1, $zoom );
-			$zoom = min( 10, $zoom );
-			if ( $zoom > 3 ) {
-				// Round UP to the nearest 0.5
-				$zoom = ceil( $zoom * 2 ) / 2;
+	function client_hint_dpr() {
+		if ( true === $this->use_client_hints ) {
+			if ( true === array_key_exists( 'HTTP_DPR', $_SERVER ) ) {
+				return floatval( $_SERVER['HTTP_DPR'] );
 			}
-		} else {
-			return $arguments;
 		}
+		return false;
+	}
 
+	function determine_zoom() {
+		$hint = $this->client_hint_dpr();
+		if ( false !== $hint ) {
+			return $hint;
+		}
+		if ( isset( $_GET['zoom'] ) ) {
+			return floatval( $_GET['zoom'] );
+		}
+		return 1;
+	}
+
+	function apply_zoom( $function_name, $arguments ) {
+		$zoom = $this->determine_zoom();
+
+		// Treat zoom < 1 and === 1 the same: return early 
+		// (effectively 1x zoom)
 		if ( $zoom <= 1 )
 			return $arguments;
+		
+		// Make sure that zoom is effectively never more than 10.
+		$zoom = min( 10, $zoom );
+		if ( $zoom > 3 ) {
+			// Round UP to the nearest 0.5
+			$zoom = ceil( $zoom * 2 ) / 2;
+		}
+
+		if ( false !== $this->client_hint_dpr() ) {
+			// If we are responding to a request which provided a DPR
+			// hint then the client is expecting a Content-DPR header
+			// in the response
+			$this->dpr_header_value = $zoom;
+		}
 
 		switch ( $function_name ) {
 			case 'set_height' :
