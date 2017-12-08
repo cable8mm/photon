@@ -50,6 +50,9 @@ $remote_image_max_size = apply_filters( 'remote_image_max_size', 55 * 1024 * 102
  */
 $origin_domain_exceptions = apply_filters( 'origin_domain_exceptions', array() );
 
+// If unprocessed origin images should cached by a Photon-enabled CDN, then the CDN's base URL should be returned by the filter
+$origin_image_cdn_url = apply_filters( 'origin_image_cdn_url', false );
+
 define( 'JPG_MAX_QUALITY', 89 );
 define( 'PNG_MAX_QUALITY', 80 );
 define( 'WEBP_MAX_QUALITY', 80 );
@@ -98,10 +101,21 @@ function httpdie( $code = '404 Not Found', $message = 'Error: 404 Not Found' ) {
 	die( $message );
 }
 
-function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 3, $max_redirs = 3 ) {
+function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 3, $max_redirs = 3, $fetch_from_origin_cdn = false ) {
 	// reset image data since we redirect recursively
 	$GLOBALS['raw_data'] = '';
 	$GLOBALS['raw_data_size'] = 0;
+
+	if ( $fetch_from_origin_cdn ) {
+		// Construct a Photon request for the unprocessed origin image
+		$timeout = $timeout + 2;
+		$is_ssl  = preg_match( '|^https://|', $url );
+		$path    = preg_replace( '|^http[s]?://|', '', $url );
+		$url     = $GLOBALS['origin_image_cdn_url'] . $path;
+		if ( $is_ssl ) {
+			$url .= '?ssl=1';
+		}
+	}
 
 	$parsed = parse_url( apply_filters( 'url', $url ) );
 	$required = array( 'scheme', 'host', 'path' );
@@ -122,6 +136,12 @@ function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 3, $max_redirs 
 				$url .= '?' . $parsed['query'];
 			}
 		}
+	}
+
+	// Ensure we maintain our SSL flag for 'fetch_from_origin_cdn' requests,
+	// regardless of whether PHOTON__ALLOW_QUERY_STRINGS is enabled or not.
+	if ( $fetch_from_origin_cdn && 'ssl=1' == $parsed['query'] ) {
+		$url .= '?ssl=1';
 	}
 
 	// https://bugs.php.net/bug.php?id=64948
@@ -153,7 +173,7 @@ function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 3, $max_redirs 
 	$ch = curl_init( $url );
 
 	curl_setopt_array( $ch, array(
-		CURLOPT_USERAGENT            => 'Photon/1.0',
+		CURLOPT_USERAGENT            => apply_filters( 'photon_user_agent', 'Photon/1.0', $fetch_from_origin_cdn ),
 		CURLOPT_TIMEOUT              => $timeout,
 		CURLOPT_CONNECTTIMEOUT       => $connect_timeout,
 		CURLOPT_PROTOCOLS            => CURLPROTO_HTTP | CURLPROTO_HTTPS,
@@ -225,6 +245,12 @@ function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 3, $max_redirs 
 	}
 }
 
+// In order to minimise requests to the site, if it's not a full-size image request,
+// then we can grab the image internally from Photon's CDN without params, which then
+// either returns the image from the cache or fetches from the site to prime the cache.
+$request_arg_array = array_intersect_key( $_GET, $allowed_functions );
+$request_from_origin_cdn = ( 0 < count( $request_arg_array ) && false !== $origin_image_cdn_url );
+
 $raw_data = '';
 $raw_data_size = 0;
 
@@ -234,7 +260,7 @@ $url = sprintf( '%s://%s%s',
 	isset( $_GET['q'] ) ? '?' . $_GET['q'] : ''
 );
 
-if ( ! fetch_raw_data( $url ) ) {
+if ( ! fetch_raw_data( $url, 10, 3, 3, $request_from_origin_cdn ) ) {
 	httpdie( '400 Bad Request', 'Sorry, the parameters you provided were not valid' );
 }
 
