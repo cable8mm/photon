@@ -696,7 +696,8 @@ class Image_Processor {
 					// Due to the fact that these functions require memory intensive conversions back and forth
 					// between Gmagick and GD, we only allow them to be executed if the (roughly estimated)
 					// memory requirement for executing them will be less than the current script memory limit
-					$est_gd_size = $this->image_width * $this->image_height * 4 * 1.7;
+					// smooth requires at worst around 2.5 times more memory, in addition to the 1.7 for the working set.
+					$est_gd_size = $this->image_width * $this->image_height * 4 * 1.7 * 2.5;
 					if ( memory_get_usage( true ) + $est_gd_size < $this->get_memory_limit() ) {
 						$effect = new Image_Effect( 'Gmagick', $this->mime_type );
 						if ( method_exists( $effect, $arg ) ) {
