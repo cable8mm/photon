@@ -507,7 +507,7 @@ require_once ( dirname( __FILE__ ) . '/class-image-effect.php' );
 			$str_img[ $offset + 2 ] = $this->frame_array[ $index ]->off_xy[1];
 			$str_img[ $offset + 3 ] = $this->frame_array[ $index ]->off_xy[2];
 			$str_img[ $offset + 4 ] = $this->frame_array[ $index ]->off_xy[3];
-			$str_img[ $offset + 9 ] = chr( $str_img[ $offset + 9 ] | 0x80 | ( ord( $str_img[10] ) & 0x7 ) );
+			$str_img[ $offset + 9 ] = chr( ord( $str_img[ $offset + 9 ] ) | 0x80 | ( ord( $str_img[10] ) & 0x7 ) );
 
 			$ms1 = substr( $str_img, $hd, $i_hd + 10 );
 			$ms1 = $this->frame_array[$index]->gr_mod . $ms1;
@@ -862,7 +862,7 @@ require_once ( dirname( __FILE__ ) . '/class-image-effect.php' );
 
 		public function get_image_blob() {
 			$gm = $this->gif_header;
-			$gm[10] = $gm[10] & 0x7F;
+			$gm[10] = ord( $gm[10] ) & 0x7F;
 			$i_bytes = $this->int_raw( round( ( $this->crop ? $this->crop_width : $this->int_w ) * $this->resize_ratios[0] ) ? : 1 );
 			$gm[6] = $i_bytes[0];
 			$gm[7] = $i_bytes[1];
