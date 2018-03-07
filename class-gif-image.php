@@ -1,7 +1,7 @@
 <?php
 /*
  * Classes to manipulate animated GIF images.
- * Maintained at: https://code.trac.wordpress.org/browser/photon/libgif.php
+ * Maintained at: https://code.trac.wordpress.org/browser/photon/class-gif-image.php
 */
 
 if ( ! class_exists( 'Gif_Frame' ) ) {
