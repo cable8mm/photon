@@ -519,13 +519,13 @@ class Image_Processor {
 		} else if ( "PNG\r\n\032\n" == substr( $this->image_data, 1, 7 ) &&
 				( 'IHDR' == substr( $this->image_data, 12, 4 ) ) ) {
 			$w = ord( substr( $this->image_data, 16, 1 ) ) << 8;
-			$w = $w | ord( substr( $this->image_data, 17, 1 ) ) << 8;
-			$w = $w | ord( substr( $this->image_data, 18, 1 ) ) << 8;
+			$w = ( $w | ord( substr( $this->image_data, 17, 1 ) ) ) << 8;
+			$w = ( $w | ord( substr( $this->image_data, 18, 1 ) ) ) << 8;
 			$w = $w | ord( substr( $this->image_data, 19, 1 ) );
 
 			$h = ord( substr( $this->image_data, 20, 1 ) ) << 8;
-			$h = $h | ord( substr( $this->image_data, 21, 1 ) ) << 8;
-			$h = $h | ord( substr( $this->image_data, 22, 1 ) ) << 8;
+			$h = ( $h | ord( substr( $this->image_data, 21, 1 ) ) ) << 8;
+			$h = ( $h | ord( substr( $this->image_data, 22, 1 ) ) ) << 8;
 			$h = $h | ord( substr( $this->image_data, 23, 1 ) );
 		} else {
 			$this->load_jpeg_info();
