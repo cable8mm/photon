@@ -743,6 +743,8 @@ class Image_Processor {
 		switch ( $this->mime_type ) {
 			case 'image/gif':
 				if ( 0 == count( $this->processed ) ) {
+					// Unset the Gif_Image object to free some memory for the `echo` below
+					unset( $this->image );
 					$this->send_headers( strlen( $this->image_data ) );
 					echo $this->image_data;
 				} else {
