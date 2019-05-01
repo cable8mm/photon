@@ -140,7 +140,7 @@ function fetch_raw_data( $url, $timeout = 10, $connect_timeout = 3, $max_redirs 
 
 	// Ensure we maintain our SSL flag for 'fetch_from_origin_cdn' requests,
 	// regardless of whether PHOTON__ALLOW_QUERY_STRINGS is enabled or not.
-	if ( $fetch_from_origin_cdn && 'ssl=1' == $parsed['query'] ) {
+	if ( $fetch_from_origin_cdn && isset( $parsed['query'] ) && 'ssl=1' == $parsed['query'] ) {
 		$url .= '?ssl=1';
 	}
 
