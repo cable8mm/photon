@@ -10,6 +10,8 @@ class Image_Processor {
 
 	private $_JPG_MAX_QUALITY;
 	private $_PNG_MAX_QUALITY;
+	private $_PNG_ZLIB_COMPRESSION_LEVEL;
+	private $_PNG_COMPRESSION_FILTER;
 	private $_WEBP_MAX_QUALITY;
 	private $_UPSCALE_MAX_PIXELS;
 	private $_UPSCALE_MAX_PIXELS_GIF;
@@ -58,13 +60,15 @@ class Image_Processor {
 
 	function __construct() {
 		// These constants should be defined externally to override the defaults
-		$this->_JPG_MAX_QUALITY        = defined( 'JPG_MAX_QUALITY' ) ? JPG_MAX_QUALITY : 100;
-		$this->_PNG_MAX_QUALITY        = defined( 'PNG_MAX_QUALITY' ) ? PNG_MAX_QUALITY : 100;
-		$this->_WEBP_MAX_QUALITY       = defined( 'WEBP_MAX_QUALITY' ) ? WEBP_MAX_QUALITY : 100;
-		$this->_UPSCALE_MAX_PIXELS     = defined( 'UPSCALE_MAX_PIXELS' ) ? UPSCALE_MAX_PIXELS : 1024;
-		$this->_UPSCALE_MAX_PIXELS_GIF = defined( 'UPSCALE_MAX_PIXELS_GIF' ) ? UPSCALE_MAX_PIXELS_GIF : 1024;
-		$this->_IMAGE_MAX_WIDTH        = defined( 'IMAGE_MAX_WIDTH' ) ? IMAGE_MAX_WIDTH : 20000;
-		$this->_IMAGE_MAX_HEIGHT       = defined( 'IMAGE_MAX_HEIGHT' ) ? IMAGE_MAX_HEIGHT : 20000;
+		$this->_JPG_MAX_QUALITY            = defined( 'JPG_MAX_QUALITY' ) ? JPG_MAX_QUALITY : 100;
+		$this->_PNG_MAX_QUALITY            = defined( 'PNG_MAX_QUALITY' ) ? PNG_MAX_QUALITY : 100;
+		$this->_PNG_ZLIB_COMPRESSION_LEVEL = defined( 'PNG_ZLIB_COMPRESSION_LEVEL' ) ? PNG_ZLIB_COMPRESSION_LEVEL : 2;
+		$this->_PNG_COMPRESSION_FILTER     = defined( 'PNG_COMPRESSION_FILTER' ) ? PNG_COMPRESSION_FILTER : 1;
+		$this->_WEBP_MAX_QUALITY           = defined( 'WEBP_MAX_QUALITY' ) ? WEBP_MAX_QUALITY : 100;
+		$this->_UPSCALE_MAX_PIXELS         = defined( 'UPSCALE_MAX_PIXELS' ) ? UPSCALE_MAX_PIXELS : 1024;
+		$this->_UPSCALE_MAX_PIXELS_GIF     = defined( 'UPSCALE_MAX_PIXELS_GIF' ) ? UPSCALE_MAX_PIXELS_GIF : 1024;
+		$this->_IMAGE_MAX_WIDTH            = defined( 'IMAGE_MAX_WIDTH' ) ? IMAGE_MAX_WIDTH : 20000;
+		$this->_IMAGE_MAX_HEIGHT           = defined( 'IMAGE_MAX_HEIGHT' ) ? IMAGE_MAX_HEIGHT : 20000;
 
 		// Allow global image optimization disabling for server load management
 		$this->_DISABLE_IMAGE_OPTIMIZATIONS = defined( 'DISABLE_IMAGE_OPTIMIZATIONS' ) ? DISABLE_IMAGE_OPTIMIZATIONS  : false;
@@ -327,7 +331,9 @@ class Image_Processor {
 			$this->quality = $this->_PNG_MAX_QUALITY;
 		}
 
-		$this->image->setcompressionquality( $this->quality );
+		// From the official documentation http://www.graphicsmagick.org/wand/magick_wand.html
+		// `the quality value sets the zlib compression level (quality / 10) and filter-type (quality % 10)`
+		$this->image->setcompressionquality( $this->_PNG_ZLIB_COMPRESSION_LEVEL * 10 + $this->_PNG_COMPRESSION_FILTER );
 		$this->image->setimageformat( 'PNG' );
 		$this->clear_and_normalize_profile();
 		$this->image->writeimage( $output );
