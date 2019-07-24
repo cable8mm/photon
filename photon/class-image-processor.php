@@ -324,6 +324,14 @@ class Image_Processor {
 			$this->image->setimagetype( Gmagick::IMGTYPE_PALETTE );
 		}
 
+		// GraphicsMagick ocassionally incorrectly converts GRAYSCALEMATTE images
+		// GRAYSCALE on write, losing transparency information. See:
+		// https://github.com/Automattic/jpop-issues/issues/4084
+		// https://github.com/Automattic/jpop-issues/issues/3826
+		if ( Gmagick::IMGTYPE_GRAYSCALEMATTE === $this->image->getimagetype() ) {
+			$this->image->setimagetype( Gmagick::IMGTYPE_TRUECOLORMATTE );
+		}
+
 		if ( $this->quality ) {
 			if ( 100 == $this->quality )
 				$this->_CWEBP_LOSSLESS = true;
