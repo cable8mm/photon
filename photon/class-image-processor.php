@@ -36,6 +36,7 @@ class Image_Processor {
 	private $image_height = 0;
 	private $image_type = 0;
 	private $image_format = '';
+	private $image_has_transparency = false;
 	private $mime_type = '';
 
 	public static $allowed_functions = array( 'w', 'h', 'crop',
@@ -582,6 +583,13 @@ class Image_Processor {
 				$this->image_width = $this->image->getimagewidth();
 				$this->image_height = $this->image->getimageheight();
 				$this->image_type = $this->image->getimagetype();
+
+				$this->image_has_transparency = in_array( $this->image_type, array(
+					Gmagick::IMGTYPE_GRAYSCALEMATTE,
+					Gmagick::IMGTYPE_TRUECOLORMATTE,
+					Gmagick::IMGTYPE_PALETTEMATTE,
+					Gmagick::IMGTYPE_COLORSEPARATIONMATTE,
+				) );
 			} catch ( GmagickException $e ) {
 				return false;
 			}
@@ -796,7 +804,7 @@ class Image_Processor {
 
 		$this->image->cropimage( $crop_w, $crop_h, $s_x, $s_y );
 
-		if ( 'image/png' == $this->mime_type && 1 < $this->image->getimagechanneldepth( Gmagick::CHANNEL_OPACITY ) )
+		if ( $this->image_has_transparency )
 			$this->image->resizeimage( $new_w, $new_h, Gmagick::FILTER_LANCZOS, 1.0 );
 		else
 			$this->image->scaleimage( $new_w, $new_h );
@@ -908,7 +916,7 @@ class Image_Processor {
 		if ( ! $this->valid_request( $crop_w, $crop_h ) )
 			return false;
 
-		if ( 'image/png' == $this->mime_type && 1 < $this->image->getimagechanneldepth( Gmagick::CHANNEL_OPACITY ) )
+		if ( $this->image_has_transparency )
 			$this->image->resizeimage( $new_w, $new_h, Gmagick::FILTER_LANCZOS, 1.0 );
 		else
 			$this->image->scaleimage( $new_w, $new_h );
@@ -959,7 +967,7 @@ class Image_Processor {
 		if ( ! $this->valid_request( $new_w, $new_h ) )
 			return false;
 
-		if ( 'image/png' == $this->mime_type && 1 < $this->image->getimagechanneldepth( Gmagick::CHANNEL_OPACITY ) )
+		if ( $this->image_has_transparency )
 			$this->image->resizeimage( $new_w, $new_h, Gmagick::FILTER_LANCZOS, 1.0, true );
 		else
 			$this->image->scaleimage( $new_w, $new_h, true );
@@ -991,7 +999,7 @@ class Image_Processor {
 			return true;
 		}
 
-		if ( 'image/png' == $this->mime_type && 1 < $this->image->getimagechanneldepth( Gmagick::CHANNEL_OPACITY ) )
+		if ( $this->image_has_transparency )
 			$this->image->resizeimage( $new_w, $new_h, Gmagick::FILTER_LANCZOS, 1.0 );
 		else
 			$this->image->scaleimage( $new_w, $new_h );
@@ -1023,7 +1031,7 @@ class Image_Processor {
 			return true;
 		}
 
-		if ( 'image/png' == $this->mime_type && 1 < $this->image->getimagechanneldepth( Gmagick::CHANNEL_OPACITY ) )
+		if ( $this->image_has_transparency )
 			$this->image->resizeimage( $new_w, $new_h, Gmagick::FILTER_LANCZOS, 1.0 );
 		else
 			$this->image->scaleimage( $new_w, $new_h );
@@ -1249,7 +1257,7 @@ class Image_Processor {
 			return false;
 		}
 
-		if ( 'image/png' == $this->mime_type && 1 < $this->image->getimagechanneldepth( Gmagick::CHANNEL_OPACITY ) )
+		if ( $this->image_has_transparency )
 			$this->image->resizeimage( $end_w, $end_h, Gmagick::FILTER_LANCZOS, 1.0, true );
 		else
 			$this->image->scaleimage( $end_w, $end_h, true );
