@@ -28,7 +28,20 @@ $allowed_functions = apply_filters( 'allowed_functions', array(
 	'smooth'      => 'smooth',          // compat
 ) );
 
+$photon_opencv_implemented_functions = array(
+	'h'          => true,
+	'w'          => true,
+	'crop'       => true,
+	'resize'     => true,
+	'fit'        => true,
+);
+
 unset( $allowed_functions['q'] );
+
+$used_unimplemented_functions = array_diff_key( array_intersect_key( $_GET, $allowed_functions ), $photon_opencv_implemented_functions );
+if ( empty( $used_unimplemented_functions ) && class_exists( 'Photon_OpenCV' )) {
+	define( 'PHOTON_USE_OPENCV', true );
+}
 
 $allowed_types = apply_filters( 'allowed_types', array(
 	'gif',
