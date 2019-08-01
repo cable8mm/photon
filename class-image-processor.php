@@ -465,6 +465,11 @@ class Image_Processor {
 	}
 
 	private function clear_and_normalize_profile() {
+		// OpenCV always strips the profile, we auto apply it before saving
+		if ( defined( 'PHOTON_USE_OPENCV' ) && PHOTON_USE_OPENCV ) {
+			return;
+		}
+
 		try {
 			if ( ! $this->norm_color_profile ) {
 				return;
@@ -567,7 +572,12 @@ class Image_Processor {
 			$this->image_height = $this->image->get_image_height();
 		} else {
 			try {
-				$this->image = new Gmagick();
+				if ( defined( 'PHOTON_USE_OPENCV' ) && PHOTON_USE_OPENCV ) {
+					$this->image = new Photon_OpenCV();
+				}
+				else {
+					$this->image = new Gmagick();
+				}
 				$this->image->readimageblob( $this->image_data );
 
 				$this->image_format = strtolower( $this->image->getimageformat() );
