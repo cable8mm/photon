@@ -39,8 +39,11 @@ $photon_opencv_implemented_functions = array(
 unset( $allowed_functions['q'] );
 
 $used_unimplemented_functions = array_diff_key( array_intersect_key( $_GET, $allowed_functions ), $photon_opencv_implemented_functions );
-if ( empty( $used_unimplemented_functions ) && class_exists( 'Photon_OpenCV' )) {
-	define( 'PHOTON_USE_OPENCV', true );
+if ( empty( $used_unimplemented_functions ) ) {
+	define( 'PHOTON_OPENCV_SUPPORTS_CURRENT_REQUEST', true );
+	if ( class_exists( 'Photon_OpenCV' ) ) {
+		define( 'PHOTON_USE_OPENCV', true );
+	}
 }
 
 $allowed_types = apply_filters( 'allowed_types', array(
@@ -302,7 +305,18 @@ if ( ! in_array( $img_proc->image_format, $allowed_types ) )
 	httpdie( '400 Bad Request', 'Error 0005. The type of image you are trying to process is not allowed.' );
 
 $original_mime_type = $img_proc->mime_type;
+
+$start_time = microtime( true );
 $img_proc->process_image();
+$end_time = microtime( true );
+
+if ( defined( 'PHOTON_OPENCV_SUPPORTS_CURRENT_REQUEST' ) && PHOTON_OPENCV_SUPPORTS_CURRENT_REQUEST ) {
+	$msec_elapsed = round( ( $end_time - $start_time ) * 1000 );
+
+	$lib_used = defined( 'PHOTON_USE_OPENCV' ) && PHOTON_USE_OPENCV ? 'opencv' : 'gmagick';
+	do_action( 'bump_stats', "reqs_{$lib_used}", 1 );
+	do_action( 'bump_stats', "msec_{$lib_used}", $msec_elapsed );
+}
 
 // Update the stats of the processed functions
 foreach ( $img_proc->processed as $function_name ) {
