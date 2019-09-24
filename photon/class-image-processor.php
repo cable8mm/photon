@@ -383,7 +383,7 @@ class Image_Processor {
 		if ( $this->quality ) {
 			if ( 100 == $this->quality )
 				$this->_CWEBP_LOSSLESS = true;
-			$this->quality = min( max( intval( $this->quality ), 20 ), $original_quality );
+			$this->quality = min( max( intval( $this->quality ), 20 ), $this->_JPG_MAX_QUALITY );
 		} else {
 			$this->quality = min( $this->_JPG_MAX_QUALITY, $original_quality );
 		}
