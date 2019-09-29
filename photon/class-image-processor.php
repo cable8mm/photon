@@ -307,6 +307,10 @@ class Image_Processor {
 				break;
 		}
 		if ( $degrees ) {
+			if ( ! defined( 'PHOTON_USE_OPENCV' ) || ! PHOTON_USE_OPENCV ) {
+				// Reset gmagick object, preventing the previous image from affecting the read
+				$this->image = new Gmagick();
+			}
 			$this->image->readimage( $file );
 			$this->image->rotateimage( 'black', $degrees );
 			$this->image->writeimage( $file );
