@@ -878,8 +878,8 @@ class Image_Processor {
 	}
 
 	public function resize( $width, $height ) {
-		$new_w = $requested_w = intval( $width );
-		$new_h = $requested_h = intval( $height );
+		$new_w = intval( $width );
+		$new_h = intval( $height );
 
 		if ( 0 >= $new_w || 0 >= $new_h ||
 			( ( $new_w > $this->image_width ) && ( $new_w > $this->_UPSCALE_MAX_PIXELS ) ) ||
@@ -888,63 +888,43 @@ class Image_Processor {
 		}
 
 		if ( 'image/gif' == $this->mime_type ) { // the GIF class processes internally
-			$this->image->add_function( 'resize_and_crop', ( $requested_w . ',' . $requested_h ) );
+			$this->image->add_function( 'resize_and_crop', ( $new_w . ',' . $new_h ) );
 			return true;
+		}
+
+		$this->upscale = true;
+
+		// check dims and skip this transformation if they are found to be out of bounds
+		if ( ! $this->valid_request( $new_w, $new_h ) ) {
+			return false;
 		}
 
 		$ratio_orig = $this->image_width / $this->image_height;
 		$ratio_end = $new_w / $new_h;
-		// If the original and new images are proportional (no cropping needed)
-		if ( $ratio_orig == $ratio_end ) {
-			$ratio = $this->image_width / $new_w;
-			if ( 0 == $ratio ) {
-				return false;
-			}
-			$this->upscale = true;
-			$crop_w = $new_w;
-			$crop_h = $new_h = round( $this->image_height / $ratio );
-			$s_x = $s_y = 0;
-		}
-		// If we need to crop off the sides
-		elseif ( $ratio_orig > $ratio_end ) {
-			$ratio = $this->image_height / $new_h;
-			if ( 0 == $ratio ) {
-				return false;
-			}
-			$this->upscale = true;
-			$new_w = round( $this->image_width / $ratio );
-			$s_x = floor( ( $new_w - $requested_w ) / 2 );
-			$s_y = 0;
-			$crop_w = max( 0, $requested_w );
-			$crop_h = max( 0, $requested_h );
-		}
-		// If we need to crop off the top/bottom
-		elseif ( $ratio_orig < $ratio_end ) {
-			$ratio = $this->image_width / $new_w;
-			if ( 0 == $ratio ) {
-				return false;
-			}
-			$this->upscale = true;
-			$new_h = round( $this->image_height / $ratio );
-			$s_x = 0;
-			$s_y = floor( ( $new_h - $requested_h ) / 2 );
-			$crop_w = max( 0, $requested_w );
-			$crop_h = max( 0, $requested_h );
+
+		if ( $ratio_orig > $ratio_end ) {
+			// If we need to crop off the sides
+			$crop_w = round( $this->image_height * $ratio_end );
+			$crop_h = $this->image_height;
+		} else {
+			// If we need to crop off the top/bottom
+			$crop_w = $this->image_width;
+			$crop_h = round( $this->image_width / $ratio_end );
 		}
 
-		// check dims and skip this transformation if they are found to be out of bounds
-		if ( ! $this->valid_request( $crop_w, $crop_h ) )
-			return false;
+		$s_x = floor( ( $this->image_width - $crop_w ) / 2 );
+		$s_y = floor( ( $this->image_height - $crop_h ) / 2 );
+
+
+		$this->image->cropimage( $crop_w, $crop_h, $s_x, $s_y );
 
 		if ( $this->image_has_transparency )
 			$this->image->resizeimage( $new_w, $new_h, Gmagick::FILTER_LANCZOS, 1.0 );
 		else
 			$this->image->scaleimage( $new_w, $new_h );
 
-		$this->image->cropimage( $crop_w, $crop_h, $s_x, $s_y );
-
-		$this->image_width = $crop_w;
-		$this->image_height = $crop_h;
+		$this->image_width = $new_w;
+		$this->image_height = $new_h;
 		return true;
 	}
 
