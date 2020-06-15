@@ -904,17 +904,16 @@ class Image_Processor {
 
 		if ( $ratio_orig > $ratio_end ) {
 			// If we need to crop off the sides
-			$crop_w = round( $this->image_height * $ratio_end );
+			$crop_w = max( 1, round( $this->image_height * $ratio_end ) );
 			$crop_h = $this->image_height;
 		} else {
 			// If we need to crop off the top/bottom
 			$crop_w = $this->image_width;
-			$crop_h = round( $this->image_width / $ratio_end );
+			$crop_h = max( 1, round( $this->image_width / $ratio_end ) );
 		}
 
 		$s_x = floor( ( $this->image_width - $crop_w ) / 2 );
 		$s_y = floor( ( $this->image_height - $crop_h ) / 2 );
-
 
 		$this->image->cropimage( $crop_w, $crop_h, $s_x, $s_y );
 
