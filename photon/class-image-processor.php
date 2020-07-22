@@ -558,7 +558,7 @@ class Image_Processor {
 				$h = $this->jpeg_details['y'];
 		}
 
-		return ( $this->_IMAGE_MAX_WIDTH > $w || $this->_IMAGE_MAX_HEIGHT > $h );
+		return ( $this->_IMAGE_MAX_WIDTH > $w && $this->_IMAGE_MAX_HEIGHT > $h );
 	}
 
 	public function load_image() {
