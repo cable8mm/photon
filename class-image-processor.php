@@ -210,6 +210,9 @@ class Image_Processor {
 			default:
 				$cmd .= ' -metadata all';
 		}
+
+		$quality = $this->quality;
+
 		if ( 'image/jpeg' == $this->mime_type ) {
 			if ( $strip && in_array( $strip, array( 'all', 'info', 'color' ), true ) ) {
 				$this->exif_rotate( $file, $strip );
@@ -217,7 +220,7 @@ class Image_Processor {
 			if ( ! $this->_CWEBP_LOSSLESS && Gmagick::IMGTYPE_GRAYSCALE == $this->image->getimagetype() ) {
 				// We have to increase the quality for grayscale images otherwise they are generally too degraded.
 				// This can also be fixed with the '-lossless' parameter, but that increases the size significantly.
-				$this->quality = $this->_WEBP_MAX_QUALITY;
+				$quality = $this->_WEBP_MAX_QUALITY;
 			}
 			$cmd .= ' -m 2';
 		} else if ( 'image/png' == $this->mime_type ) {
@@ -226,9 +229,13 @@ class Image_Processor {
 			$cmd .= ' -m 2';
 		}
 
-		$this->quality = min( $this->_WEBP_MAX_QUALITY, $this->quality );
+		if ( $quality ) {
+			$quality = min( $this->_WEBP_MAX_QUALITY, max( 1, $quality ) );
+		} else {
+			$quality = $this->_WEBP_MAX_QUALITY;
+		}
 
-		$cmd .= " -q {$this->quality} -o $transformed $file";
+		$cmd .= " -q $quality -o $transformed $file";
 		exec( $cmd, $o, $e );
 
 		if ( $e == 0 && file_exists( $transformed ) ) {
@@ -317,6 +324,35 @@ class Image_Processor {
 		}
 	}
 
+	private function try_to_compress_and_send_webp() {
+		$output = tempnam( '/dev/shm/', 'pre-' );
+		register_shutdown_function( 'unlink', $output );
+
+		// We can't save straight to webp. Use an intermediate lossless format for converting
+		$this->image->setimageformat( 'PNG' );
+		// Use the fastest possible compression strategy
+		$this->image->setcompressionquality( 0 );
+		$this->image->writeimage( $output );
+
+		if ( ! $this->cwebp( $output ) ) {
+			return false;
+		}
+
+		$this->mime_type = 'image/webp';
+		$n_size = filesize( $output );
+
+		if ( $this->send_bytes_saved ) {
+			// There's nothing we can compare the webp to, no bytes were saved
+			clearstatcache();
+			$this->bytes_saved = 0;
+		}
+
+		$this->send_headers( $n_size );
+		readfile( $output );
+
+		return true;
+	}
+
 	private function compress_and_send_png() {
 		$output = tempnam( '/dev/shm/', 'pre-' );
 		register_shutdown_function( 'unlink', $output );
@@ -328,15 +364,7 @@ class Image_Processor {
 			$this->image->setimagetype( Gmagick::IMGTYPE_PALETTE );
 		}
 
-		// GraphicsMagick ocassionally incorrectly converts GRAYSCALEMATTE images
-		// GRAYSCALE on write, losing transparency information. See:
-		if ( Gmagick::IMGTYPE_GRAYSCALEMATTE === $this->image->getimagetype() ) {
-			$this->image->setimagetype( Gmagick::IMGTYPE_TRUECOLORMATTE );
-		}
-
 		if ( $this->quality ) {
-			if ( 100 == $this->quality )
-				$this->_CWEBP_LOSSLESS = true;
 			$this->quality = min( max( intval( $this->quality ), 20 ), $this->_PNG_MAX_QUALITY );
 		} else {
 			$this->quality = $this->_PNG_MAX_QUALITY;
@@ -346,15 +374,11 @@ class Image_Processor {
 		// `the quality value sets the zlib compression level (quality / 10) and filter-type (quality % 10)`
 		$this->image->setcompressionquality( $this->_PNG_ZLIB_COMPRESSION_LEVEL * 10 + $this->_PNG_COMPRESSION_FILTER );
 		$this->image->setimageformat( 'PNG' );
-		$this->clear_and_normalize_profile();
 		$this->image->writeimage( $output );
 
-		if ( $this->send_bytes_saved )
-			$o_size = filesize( $output );
+		$o_size = filesize( $output );
 
-		if ( $this->webp_supported() && $this->cwebp( $output ) ) {
-			$this->mime_type = 'image/webp';
-		} else if ( $this->_PNGQUANT ) {
+		if ( $this->_PNGQUANT ) {
 			exec( $this->_PNGQUANT . " --speed 5 --quality={$this->quality}-100 -f -o $output $output" );
 			if ( $this->_OPTIPNG )
 				$this->optipng( $output, '-o1' );
@@ -379,35 +403,20 @@ class Image_Processor {
 		$output = tempnam( '/dev/shm/', 'pre-' );
 		register_shutdown_function( 'unlink', $output );
 
-		$original_quality = $this->_JPG_MAX_QUALITY;
-
-		if ( isset( $this->jpeg_details['q'] ) && ! empty( $this->jpeg_details['q'] ) )
-			$original_quality = $this->jpeg_details['q'];
-
 		if ( $this->quality ) {
-			if ( 100 == $this->quality )
-				$this->_CWEBP_LOSSLESS = true;
 			$this->quality = min( max( intval( $this->quality ), 20 ), $this->_JPG_MAX_QUALITY );
 		} else {
-			$this->quality = min( $this->_JPG_MAX_QUALITY, $original_quality );
+			$this->quality = $this->_JPG_MAX_QUALITY;
 		}
 
-		// We need to set the mimetype here as we may have a webp image stored but the current client does
-		// not support webp. In which case we will serve a jpeg image created from the webp image source.
-		// The same applies to any other image types in the system, BMP, etc. which are also served as JPEGs.
 		$this->mime_type = 'image/jpeg';
 
 		$this->image->setimageformat( 'JPEG' );
 		$this->image->setcompressionquality( $this->quality );
-		$this->clear_and_normalize_profile();
 		$this->image->writeimage( $output );
 
-		if ( $this->send_bytes_saved )
-			$o_size = filesize( $output );
-
-		if ( $this->webp_supported() && $this->cwebp( $output ) ) {
-			$this->mime_type = 'image/webp';
-		} else if ( $this->_JPEGOPTIM ) {
+		$o_size = filesize( $output );
+		if ( $this->_JPEGOPTIM ) {
 			$this->jpegoptim( $output );
 		} else if ( $this->_JPEGTRAN ) {
 			$this->jpegtran( $output );
@@ -774,23 +783,40 @@ class Image_Processor {
 			}
 		}
 
-		switch ( $this->mime_type ) {
-			case 'image/gif':
-				if ( 0 == count( $this->processed ) ) {
-					// Unset the Gif_Image object to free some memory for the `echo` below
-					unset( $this->image );
-					$this->send_headers( strlen( $this->image_data ) );
-					echo $this->image_data;
+		if ( 'image/gif' === $this->mime_type ) {
+			if ( 0 == count( $this->processed ) ) {
+				// Unset the Gif_Image object to free some memory for the `echo` below
+				unset( $this->image );
+				$this->send_headers( strlen( $this->image_data ) );
+				echo $this->image_data;
+			} else {
+				$this->process_and_send_gif();
+			}
+		} else {
+			// GraphicsMagick ocassionally incorrectly converts GRAYSCALEMATTE images
+			// to GRAYSCALE on write, losing transparency information.
+			if ( Gmagick::IMGTYPE_GRAYSCALEMATTE === $this->image->getimagetype() ) {
+				$this->image->setimagetype( Gmagick::IMGTYPE_TRUECOLORMATTE );
+			}
+
+			// Max quality defaults to lossless if the oriinal image is not lossy
+			if ( 100 == $this->quality && 'image/png' === $this->mime_type ) {
+				$this->_CWEBP_LOSSLESS = true;
+			}
+			// If lossy, try to keep the original quality
+			if ( 'image/jpeg' === $this->mime_type && ! isset( $this->quality ) && ! empty( $this->jpeg_details['q'] ) ) {
+				$this->quality = $this->jpeg_details['q'];
+			}
+
+			$this->clear_and_normalize_profile();
+
+			if ( ! $this->webp_supported() || ! $this->try_to_compress_and_send_webp() ) {
+				if ( 'image/png' === $this->mime_type ) {
+					$this->compress_and_send_png();
 				} else {
-					$this->process_and_send_gif();
+					$this->compress_and_send_jpeg();
 				}
-				break;
-			case 'image/png':
-				$this->compress_and_send_png();
-				break;
-			default:
-				$this->compress_and_send_jpeg();
-				break;
+			}
 		}
 	}
 
