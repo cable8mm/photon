@@ -38,6 +38,8 @@ class Image_Processor {
 	private $image_format = '';
 	private $image_has_transparency = false;
 	private $mime_type = '';
+	private $original_exif = null;
+	private $hardcoded_rotation = null;
 
 	public static $allowed_functions = array( 'w', 'h', 'crop',
 			'crop_offset', 'resize', 'fit', 'lb', 'ulb', 'filter',
@@ -214,9 +216,6 @@ class Image_Processor {
 		$quality = $this->quality;
 
 		if ( 'image/jpeg' == $this->mime_type ) {
-			if ( $strip && in_array( $strip, array( 'all', 'info', 'color' ), true ) ) {
-				$this->exif_rotate( $file, $strip );
-			}
 			if ( ! $this->_CWEBP_LOSSLESS && Gmagick::IMGTYPE_GRAYSCALE == $this->image->getimagetype() ) {
 				// We have to increase the quality for grayscale images otherwise they are generally too degraded.
 				// This can also be fixed with the '-lossless' parameter, but that increases the size significantly.
@@ -254,11 +253,7 @@ class Image_Processor {
 			return false;
 		}
 
-		$strip = false;
-		if ( isset( $_GET['strip'] ) ) {
-			$strip = $_GET['strip'];
-			$this->exif_rotate( $transformed, $strip );
-		}
+		$strip = $_GET['strip'] ?? false;
 
 		$cmd = $this->_JPEGOPTIM . ' -T0.0 --all-progressive';
 		switch ( $strip ) {
@@ -284,22 +279,32 @@ class Image_Processor {
 		}
 	}
 
-	private function exif_rotate( $file, $strip ) {
-		if ( ! function_exists( 'exif_read_data' ) )
-			return;
-		if ( ! in_array( $strip, array( 'all', 'info' ) ) )
-			return;
+	private function get_original_exif() {
+		if ( ! isset( $this->original_exif ) ) {
+			if ( ! function_exists( 'exif_read_data' ) ) {
+				return null;
+			}
 
-		// If there is invalid EXIF data this will emit a warning, even
-		// when using the @ operator.  A correct approach would be to validate
-		// the EXIF data before attempting to use it.  For now, just
-		// avoiding spewing warnings.
-		$old_level = error_reporting( E_ERROR );
-		$exif = @exif_read_data( $file );
-		error_reporting( $old_level );
+			$original_file = tempnam( '/dev/shm/', 'original-' );
+			register_shutdown_function( 'unlink', $original_file );
+			file_put_contents( $original_file, $this->image_data );
 
-		if ( false === $exif || ! isset( $exif[ 'Orientation' ] ) )
-			return;
+			// If there is invalid EXIF data this will emit a warning, even
+			// when using the @ operator.  A correct approach would be to validate
+			// the EXIF data before attempting to use it.  For now, just
+			// avoiding spewing warnings.
+			$old_level = error_reporting( E_ERROR );
+			$this->original_exif = @exif_read_data( $original_file );
+			error_reporting( $old_level );
+		}
+
+		return $this->original_exif;
+	}
+
+	private function get_rotation_degrees_from_exif( $exif ) {
+		if ( false === $exif || ! isset( $exif[ 'Orientation' ] ) ) {
+			return 0;
+		}
 
 		$degrees = 0;
 		switch( $exif[ 'Orientation' ] ) {
@@ -313,28 +318,59 @@ class Image_Processor {
 				$degrees = 270;
 				break;
 		}
-		if ( $degrees ) {
-			if ( ! defined( 'PHOTON_USE_OPENCV' ) || ! PHOTON_USE_OPENCV ) {
-				// Reset gmagick object, preventing the previous image from affecting the read
-				$this->image = new Gmagick();
-			}
-			$this->image->readimage( $file );
-			$this->image->rotateimage( 'black', $degrees );
-			$this->image->writeimage( $file );
+
+		return $degrees;
+	}
+
+	private function is_rotation_being_stripped( $strip ) {
+		return in_array( $strip, array( 'all', 'info' ) );
+	}
+
+	private function maybe_hardcode_exif_rotation( $strip ) {
+		if ( isset( $this->hardcoded_rotation ) || ! $this->is_rotation_being_stripped( $strip ) ) {
+			return;
 		}
+
+		$degrees = $this->get_rotation_degrees_from_exif( $this->get_original_exif() );
+		if ( 0 !== $degrees ) {
+			$this->image->rotateimage( 'black', $degrees );
+		}
+		$this->hardcoded_rotation = $degrees;
+	}
+
+	private function maybe_undo_hardcoded_rotation() {
+		if ( ! empty( $this->hardcoded_rotation ) ) {
+			$this->image->rotateimage( 'black', -$this->hardcoded_rotation );
+		}
+		$this->hardcoded_rotation = null;
 	}
 
 	private function try_to_compress_and_send_webp() {
 		$output = tempnam( '/dev/shm/', 'pre-' );
 		register_shutdown_function( 'unlink', $output );
 
+		// If the image is a JPEG and is going to have its exif data removed, we need to rotate it before converting to PNG
+		$strip = $_GET['strip'] ?? $this->_CWEBP_DEFAULT_META_STRIP;
+		$this->maybe_hardcode_exif_rotation( $strip );
+
 		// We can't save straight to webp. Use an intermediate lossless format for converting
 		$this->image->setimageformat( 'PNG' );
 		// Use the fastest possible compression strategy
 		$this->image->setcompressionquality( 0 );
+
+		 // cwebp ignores the PNG orientation exif data if GMagick generates it
+		if ( 'Gmagick' === get_class( $this->image ) &&
+			! $this->is_rotation_being_stripped( $strip ) &&
+			$this->get_rotation_degrees_from_exif( $this->get_original_exif() ) ) {
+
+			$this->image->setimageformat( 'JPG' );
+			$this->image->setcompressionquality( 100 );
+		}
+
 		$this->image->writeimage( $output );
 
 		if ( ! $this->cwebp( $output ) ) {
+			$this->maybe_undo_hardcoded_rotation();
 			return false;
 		}
 
@@ -411,13 +447,23 @@ class Image_Processor {
 
 		$this->mime_type = 'image/jpeg';
 
+		// Exif is only stripped with jpegoptim, but we need to do it
+		// before writing the jpeg to prevent double encoding
+		if ( $this->_JPEGOPTIM && isset( $_GET['strip'] ) ) {
+			$this->maybe_hardcode_exif_rotation( $_GET['strip'] );
+		}
+
 		$this->image->setimageformat( 'JPEG' );
 		$this->image->setcompressionquality( $this->quality );
 		$this->image->writeimage( $output );
 
 		$o_size = filesize( $output );
 		if ( $this->_JPEGOPTIM ) {
-			$this->jpegoptim( $output );
+			if ( false === $this->jpegoptim( $output ) ) {
+				// Unexpected jpegoptim failure, exif won't be stripped, undo rotation hardcoding
+				$this->maybe_undo_hardcoded_rotation();
+				$this->image->writeimage( $output );
+			}
 		} else if ( $this->_JPEGTRAN ) {
 			$this->jpegtran( $output );
 		}
@@ -607,7 +653,6 @@ class Image_Processor {
 				} else {
 					$this->mime_type = 'application/octet-stream';
 				}
-				unset( $this->image_data );
 
 				$this->image_width = $this->image->getimagewidth();
 				$this->image_height = $this->image->getimageheight();
