@@ -358,7 +358,7 @@ class Image_Processor {
 		// Use the fastest possible compression strategy
 		$this->image->setcompressionquality( 0 );
 
-		 // cwebp ignores the PNG orientation exif data if GMagick generates it
+		// cwebp ignores the PNG orientation exif data if GMagick generates it
 		if ( 'Gmagick' === get_class( $this->image ) &&
 			! $this->is_rotation_being_stripped( $strip ) &&
 			$this->get_rotation_degrees_from_exif( $this->get_original_exif() ) ) {
@@ -633,8 +633,7 @@ class Image_Processor {
 			try {
 				if ( defined( 'PHOTON_USE_OPENCV' ) && PHOTON_USE_OPENCV ) {
 					$this->image = new Photon_OpenCV();
-				}
-				else {
+				} else {
 					$this->image = new Gmagick();
 				}
 				$this->image->readimageblob( $this->image_data );
